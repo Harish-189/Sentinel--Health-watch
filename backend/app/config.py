@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
 
 import yaml
 from pydantic import BaseModel
@@ -88,6 +87,22 @@ class ForecastCfg(BaseModel):
     intervention_delay_days: int
 
 
+class LLMCfg(BaseModel):
+    default_model: str
+    default_fast_model: str
+    max_calls_per_analysis: int
+    max_tokens: int
+    timeout_s: float
+    effort: str
+    critic_effort: str
+    verifier_llm_critic: bool
+    tool_rounds_max: int
+    prompt_version: str
+    number_rel_tol: float
+    number_abs_tol: float
+    pricing: dict[str, tuple[float, float, float]]
+
+
 class Settings(BaseModel):
     simulation: SimulationCfg
     privacy: PrivacyCfg
@@ -95,7 +110,7 @@ class Settings(BaseModel):
     gate: GateCfg
     confidence: ConfidenceCfg
     forecast: ForecastCfg
-    llm: dict[str, Any]
+    llm: LLMCfg
 
 
 @lru_cache(maxsize=4)

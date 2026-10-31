@@ -82,6 +82,19 @@ forecast:
   intervention_delay_days: 2
 
 llm:
+  # Models come from env: ANTHROPIC_MODEL (default below), ANTHROPIC_MODEL_FAST. Mode: LLM_MODE=auto|online|offline
+  default_model: claude-opus-5-5
+  default_fast_model: claude-haiku-5-5
   max_calls_per_analysis: 4
-  max_tokens: 1500
-  timeout_s: 30
+  max_tokens: 8000
+  timeout_s: 45
+  effort: low              # Opus 5.5 cannot disable thinking; effort is the cost lever
+  critic_effort: low
+  verifier_llm_critic: true
+  tool_rounds_max: 2
+  prompt_version: v1       # bump to invalidate the result cache
+  number_rel_tol: 0.05
+  number_abs_tol: 0.011
+  pricing:                 # USD per 1M tokens: [input, output, cache_read]
+    claude-opus-5-5: [4.0, 20.0, 0.20]
+    claude-haiku-5-5: [0.10, 0.50, 0.01]

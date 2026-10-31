@@ -6,9 +6,13 @@ from functools import lru_cache
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.agents.llm import LLMSession, models, resolve_mode
 from app.agents.orchestrator import run_analysis
+from app.agents.pipeline import run_pipeline, run_to_casefile
+from app.agents.schemas import CaseFile
 from app.agents.tools import CATALOG
 from app.analysis.forecast import forecast_capacity
 from app.analysis.models import AnalysisBundle, Forecast
@@ -80,6 +84,34 @@ def forecast(district: str = "D3", scenario: str = "true_outbreak", seed: int = 
     if not intervention:
         return bundle.assessment(district).forecast
     return forecast_capacity(bundle.context, district, intervention=True)
+
+
+@app.get("/api/system")
+def system() -> dict[str, Any]:
+    mode, reason = resolve_mode()
+    model, fast = models()
+    return {"llm_mode": mode, "degraded_reason": reason, "model": model, "fast_model": fast,
+            "kill_switch": GOV.kill_switch_engaged()}
+
+
+@app.get("/api/casefile")
+def casefile(scenario: str = "true_outbreak", seed: int = 42, as_of: int | None = None,
+             district: str | None = None) -> CaseFile:
+    return run_to_casefile(_scenario(scenario), seed, as_of, district, gov=GOV)
+
+
+@app.get("/api/analyze/stream")
+def analyze_stream(scenario: str = "true_outbreak", seed: int = 42, as_of: int | None = None,
+                   district: str | None = None, pace_ms: float = 350.0) -> StreamingResponse:
+    names = _scenario(scenario)
+
+    def events() -> Any:
+        for item in run_pipeline(names, seed, as_of, district, gov=GOV, session=LLMSession(), pace_ms=pace_ms):
+            kind = "casefile" if isinstance(item, CaseFile) else "step"
+            yield f"event: {kind}\ndata: {item.model_dump_json()}\n\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @app.get("/api/catalog")
