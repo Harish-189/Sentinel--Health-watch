@@ -46,12 +46,40 @@ gate:
   e3_residual_excess: 0.30
   holiday_explains_max: 0.70
   backlog_tests_z_max: 3.0 # tests_done must stay below this z for "positivity rising, tests stable"
+  active_within_days: 21   # an anomaly belongs to the current signal if it was active this recently
+  completeness_window: 14
+  feed_window: 7           # days checked for missing (not suppressed) feed values
+  holiday_window_days: 3   # excess within +-N days of a holiday is attributable to it
+  holiday_ruled_out_max: 0.30
+  reporting_align_days: 3  # a meta/schema change this close to signal onset explains a step
+  weather_corr_min: 0.5
+  seasonal_yoy_explains: 1.15  # observed within 15% of the same weeks last year -> seasonal
+  seasonal_yoy_ruled_out: 1.30
+  contradict_pos_z_max: 1.0    # recent lab positivity z below this after an earlier rise = contradiction
+
+confidence:
+  intercept: -5.0
+  weights:
+    independent_sources: 1.5
+    mean_z: 1.5
+    lag_consistency: 1.0
+    spatial_coherence: 1.2
+    persistence_days: 1.0
+    confounder_residual: 3.0
+  platt_a: 1.0             # Platt calibration, refit by the eval harness (Stage 5)
+  platt_b: 0.0
+  bootstrap_n: 200
 
 forecast:
   n_sims: 1000
   horizon_days: 14
   los_mean_days: 5.0
   icu_los_mean_days: 8.0
+  fit_days: 14
+  icu_share: 0.10
+  growth_clip: [-0.15, 0.25]
+  intervention_growth_cut: 0.03
+  intervention_delay_days: 2
 
 llm:
   max_calls_per_analysis: 4

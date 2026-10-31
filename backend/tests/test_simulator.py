@@ -63,7 +63,7 @@ def test_reporting_change_updates_meta() -> None:
     df = simulate("reporting_change").df
     sites = _series(df, "D3", "meta", "sites_expected")
     schema = _series(df, "D3", "meta", "schema_version")
-    assert sites[700] == sites[699] + 4
+    assert sites[700] == sites[699] + 6
     assert schema[699] == 1 and schema[700] == 2
 
 

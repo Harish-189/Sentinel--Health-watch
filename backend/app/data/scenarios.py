@@ -127,18 +127,18 @@ def _holiday_spike(drv: Drivers, ctx: SimContext) -> list[str]:
 
 
 def _reporting_change(drv: Drivers, ctx: SimContext) -> list[str]:
-    i, o = index_of(ctx.primary), ctx.onset_day
-    for ch in ("resp", "gi", "febrile", "other"):
-        drv.mult[ch][i, o:] *= 1.3
-    for ch in ("antipyretic", "cough_cold", "antiviral", "ors"):
-        drv.mult[ch][i, o:] *= 1.25
     return [ctx.primary]
 
 
 def _reporting_change_post(out: Series, ctx: SimContext) -> None:
+    """New sites add reported volume only; true illness (and admissions) are unchanged."""
     i, o = index_of(ctx.primary), ctx.onset_day
-    out[("meta", "sites_expected")][i, o:] += 4
-    out[("meta", "sites_received")][i, o:] += ctx.rng.binomial(4, 0.98, size=ctx.days - o)
+    for m in ("respiratory", "gastrointestinal", "febrile_rash", "other"):
+        out[("clinic", m)][i, o:] = np.round(out[("clinic", m)][i, o:] * 1.5)
+    for m in ("antipyretic", "cough_cold", "antiviral", "ors_rehydration"):
+        out[("pharmacy", m)][i, o:] = np.round(out[("pharmacy", m)][i, o:] * 1.4)
+    out[("meta", "sites_expected")][i, o:] += 6
+    out[("meta", "sites_received")][i, o:] += ctx.rng.binomial(6, 0.98, size=ctx.days - o)
     out[("meta", "schema_version")][i, o:] = 2
 
 

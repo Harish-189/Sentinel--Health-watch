@@ -1,28 +1,48 @@
-"""Sentinel API. Stage 1 exposes health, districts, scenarios and detection; later stages extend it."""
+"""Sentinel API."""
 
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 
+from app.agents.orchestrator import run_analysis
+from app.agents.tools import CATALOG
+from app.analysis.forecast import forecast_capacity
+from app.analysis.models import AnalysisBundle, Forecast
 from app.data.districts import DISTRICTS, neighbors
 from app.data.privacy import apply_privacy
 from app.data.scenarios import CORE_SCENARIOS, OVERLAYS, simulate
 from app.detection.run import DetectionReport, detect_all
+from app.governance.approvals import Governance, GovernanceError, KillSwitchEngaged, PendingAction
+from app.governance.audit import AuditEntry
+from app.governance.store import default_gov_engine
 
-app = FastAPI(title="Sentinel", version="0.1.0")
+app = FastAPI(title="Sentinel", version="0.2.0")
+GOV = Governance(default_gov_engine())
+
+
+def _scenario(name: str) -> tuple[str, ...]:
+    parts = tuple(p for p in name.split("+") if p)
+    if not parts or any(p not in OVERLAYS for p in parts):
+        raise HTTPException(404, f"unknown scenario: {name}")
+    return parts
 
 
 @lru_cache(maxsize=16)
-def _detection(scenario: str, seed: int, as_of: int | None) -> DetectionReport:
-    sim = simulate(scenario.split("+"), seed=seed)
+def _detection(scenario: tuple[str, ...], seed: int, as_of: int | None) -> DetectionReport:
+    sim = simulate(list(scenario), seed=seed)
     return detect_all(apply_privacy(sim.df), holidays=sim.holidays, as_of=as_of)
 
 
+# ------------------------------------------------------------------ read APIs
+
+
 @app.get("/api/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> dict[str, Any]:
+    return {"status": "ok", "kill_switch": GOV.kill_switch_engaged()}
 
 
 @app.get("/api/districts")
@@ -45,6 +65,112 @@ def scenarios() -> list[dict[str, object]]:
 
 @app.get("/api/detect")
 def detect(scenario: str = "true_outbreak", seed: int = 42, as_of: int | None = None) -> DetectionReport:
-    if any(part not in OVERLAYS for part in scenario.split("+")):
-        raise HTTPException(404, f"unknown scenario: {scenario}")
-    return _detection(scenario, seed, as_of)
+    return _detection(_scenario(scenario), seed, as_of)
+
+
+@app.get("/api/analysis")
+def analysis(scenario: str = "true_outbreak", seed: int = 42, as_of: int | None = None) -> AnalysisBundle:
+    return run_analysis(_scenario(scenario), seed=seed, as_of=as_of)
+
+
+@app.get("/api/forecast")
+def forecast(district: str = "D3", scenario: str = "true_outbreak", seed: int = 42, as_of: int | None = None,
+             intervention: bool = False) -> Forecast:
+    bundle = run_analysis(_scenario(scenario), seed=seed, as_of=as_of)
+    if not intervention:
+        return bundle.assessment(district).forecast
+    return forecast_capacity(bundle.context, district, intervention=True)
+
+
+@app.get("/api/catalog")
+def catalog() -> list[dict[str, str]]:
+    return [{"name": a.name, "title": a.title, "min_tier": a.min_tier, "system": a.system,
+             "description": a.description} for a in CATALOG.values()]
+
+
+# ------------------------------------------------------------------ governance
+
+
+class ProposeBody(BaseModel):
+    action: str
+    district: str
+    scenario: str = "true_outbreak"
+    seed: int = 42
+    as_of: int | None = None
+    rationale: str = ""
+    evidence_ids: list[str] = Field(default_factory=list)
+    params: dict[str, Any] = Field(default_factory=dict)
+    proposed_by: str = "officer"
+
+
+class DecisionBody(BaseModel):
+    actor: str = "officer"
+    reason: str = ""
+    params: dict[str, Any] | None = None
+    rationale: str | None = None
+
+
+class KillBody(BaseModel):
+    engaged: bool
+    actor: str = "officer"
+    reason: str = ""
+
+
+def _gov_call(fn: Any, *args: Any, **kwargs: Any) -> Any:
+    try:
+        return fn(*args, **kwargs)
+    except KillSwitchEngaged as e:
+        raise HTTPException(423, str(e)) from e
+    except GovernanceError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@app.get("/api/actions")
+def list_actions(status: str | None = None) -> list[PendingAction]:
+    return GOV.list(status)
+
+
+@app.post("/api/actions")
+def propose_action(body: ProposeBody) -> PendingAction:
+    # The tier is recomputed server-side; a client cannot claim a higher tier.
+    bundle = run_analysis(_scenario(body.scenario), seed=body.seed, as_of=body.as_of)
+    tier = bundle.assessment(body.district).gate.tier
+    unknown = [e for e in body.evidence_ids if e not in bundle.evidence]
+    if unknown:
+        raise HTTPException(400, f"unknown evidence ids: {unknown}")
+    return _gov_call(GOV.propose, body.action, body.district, tier, body.rationale, body.evidence_ids,
+                     body.params, body.proposed_by)
+
+
+@app.post("/api/actions/{ref}/approve")
+def approve_action(ref: str, body: DecisionBody) -> PendingAction:
+    return _gov_call(GOV.approve, ref, body.actor)
+
+
+@app.post("/api/actions/{ref}/edit")
+def edit_action(ref: str, body: DecisionBody) -> PendingAction:
+    return _gov_call(GOV.edit, ref, body.actor, body.params, body.rationale)
+
+
+@app.post("/api/actions/{ref}/reject")
+def reject_action(ref: str, body: DecisionBody) -> PendingAction:
+    return _gov_call(GOV.reject, ref, body.actor, body.reason)
+
+
+@app.get("/api/audit")
+def audit(limit: int | None = None) -> dict[str, Any]:
+    entries: list[AuditEntry] = GOV.audit.list(limit)
+    return {"verified": GOV.audit.verify_chain(), "entries": entries}
+
+
+@app.get("/api/killswitch")
+def get_kill_switch() -> dict[str, bool]:
+    return {"engaged": GOV.kill_switch_engaged()}
+
+
+@app.post("/api/killswitch")
+def set_kill_switch(body: KillBody) -> dict[str, bool]:
+    if not body.reason.strip():
+        raise HTTPException(400, "a reason is required")
+    GOV.set_kill_switch(body.engaged, body.actor, body.reason)
+    return {"engaged": GOV.kill_switch_engaged()}

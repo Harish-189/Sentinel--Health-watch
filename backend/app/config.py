@@ -56,6 +56,36 @@ class GateCfg(BaseModel):
     e3_residual_excess: float
     holiday_explains_max: float
     backlog_tests_z_max: float
+    active_within_days: int
+    completeness_window: int
+    feed_window: int
+    holiday_window_days: int
+    holiday_ruled_out_max: float
+    reporting_align_days: int
+    weather_corr_min: float
+    seasonal_yoy_explains: float
+    seasonal_yoy_ruled_out: float
+    contradict_pos_z_max: float
+
+
+class ConfidenceCfg(BaseModel):
+    intercept: float
+    weights: dict[str, float]
+    platt_a: float
+    platt_b: float
+    bootstrap_n: int
+
+
+class ForecastCfg(BaseModel):
+    n_sims: int
+    horizon_days: int
+    los_mean_days: float
+    icu_los_mean_days: float
+    fit_days: int
+    icu_share: float
+    growth_clip: tuple[float, float]
+    intervention_growth_cut: float
+    intervention_delay_days: int
 
 
 class Settings(BaseModel):
@@ -63,7 +93,8 @@ class Settings(BaseModel):
     privacy: PrivacyCfg
     detection: DetectionCfg
     gate: GateCfg
-    forecast: dict[str, Any]
+    confidence: ConfidenceCfg
+    forecast: ForecastCfg
     llm: dict[str, Any]
 
 

@@ -146,7 +146,7 @@ def generate(drv: Drivers, ctx: SimContext) -> dict[tuple[str, str], Array]:
 def _capacity(rng: np.random.Generator, out: dict[tuple[str, str], Array], ctx: SimContext) -> None:
     """Admissions lag clinic visits by 2 days; occupancy evolves with stochastic length of stay."""
     fc = get_settings().forecast
-    los, icu_los = float(fc["los_mean_days"]), float(fc["icu_los_mean_days"])
+    los, icu_los = fc.los_mean_days, fc.icu_los_mean_days
     c = out
     lam = (
         0.03 * c[("clinic", "respiratory")]
@@ -164,7 +164,7 @@ def _capacity(rng: np.random.Generator, out: dict[tuple[str, str], Array], ctx: 
     icu = np.empty((n_d, n_t))
     beds[:, 0] = np.round(mean_adm * los)
     icu[:, 0] = np.round(mean_adm * 0.10 * icu_los)
-    beds_total = np.round(mean_adm * los / 0.74)
+    beds_total = np.round(mean_adm * los / 0.70)
     icu_total = np.round(mean_adm * 0.10 * icu_los / 0.66)
     for i in range(1, n_t):
         beds[:, i] = beds[:, i - 1] - rng.binomial(beds[:, i - 1].astype(np.int64), 1 / los) + adm[:, i]
