@@ -1,0 +1,59 @@
+# Sentinel thresholds and tunables. Code reads these via app.config; never hardcode them.
+
+simulation:
+  days: 730
+  start_date: "2023-11-01"
+  onset_day: 700          # scenario events start here; "now" = last day (729)
+  seed: 42
+  default_primary: D3     # Amberfield (center tile, 6 neighbors)
+
+privacy:
+  k_min: 5                # small-cell suppression threshold (counts below -> null + flag)
+  laplace_enabled: false  # optional noise on displayed/exported small counts
+  laplace_epsilon: 1.0
+  pii_patterns:           # regex, matched case-insensitively against column + metric names
+    - '(^|_)(first_?|last_?|full_?|patient_?|person_?)?name($|_)'
+    - '(^|_)(patient|person|user|national|mrn|ssn)?_?id($|_)'
+    - '(^|_)(dob|birth|birthdate|date_of_birth)($|_)'
+    - 'address|street|postcode|zip'
+    - 'phone|mobile_no|email'
+    - 'ssn|aadhaar|passport|patient|person'
+  allowlist: [district_id, evidence_id, run_id]
+
+detection:
+  train_guard_days: 45    # gap between training data and as-of day (keeps recent events out of the baseline)
+  min_train_days: 180
+  eval_window: 90         # days scored before as-of
+  fourier_harmonics: 2
+  outlier_mad: 3.5        # robust refit: drop training residuals beyond this many MADs
+  z_threshold: 3.0
+  consecutive_days: 2
+  merge_gap_days: 2       # streaks separated by <= this many days form one anomaly episode
+  ewma_lambda: 0.3
+  ewma_L: 3.0
+  cusum_k: 0.5
+  cusum_h: 5.0
+  min_sigma: 0.02         # floor on residual scale
+
+gate:
+  e1_z: 3.0
+  e1_consecutive: 2
+  e2_min_sources: 3
+  lag_window_days: 10      # anomalies across sources must start within this window
+  completeness_min: 0.90
+  e3_persistence_days: 3
+  e3_min_adjacent: 1       # >=1 adjacent district also anomalous (=2 districts total)
+  e3_residual_excess: 0.30
+  holiday_explains_max: 0.70
+  backlog_tests_z_max: 3.0 # tests_done must stay below this z for "positivity rising, tests stable"
+
+forecast:
+  n_sims: 1000
+  horizon_days: 14
+  los_mean_days: 5.0
+  icu_los_mean_days: 8.0
+
+llm:
+  max_calls_per_analysis: 4
+  max_tokens: 1500
+  timeout_s: 30
