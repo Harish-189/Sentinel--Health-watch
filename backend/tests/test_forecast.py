@@ -33,3 +33,11 @@ def test_intervention_lowers_projection() -> None:
 
 def test_forecast_is_seeded() -> None:
     assert _fc("true_outbreak") == _fc("true_outbreak")
+
+
+def test_prob_label_never_claims_certainty() -> None:
+    from app.analysis.forecast import prob_label
+
+    assert prob_label(1.0) == "≥99%" and prob_label(0.995) == "≥99%"
+    assert prob_label(0.0) == "<1%" and prob_label(0.004) == "<1%"
+    assert prob_label(0.874) == "87%"

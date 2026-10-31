@@ -7,6 +7,7 @@ import math
 
 from app.agents.schemas import Claim, Hypothesis, NumberRef, Recommendation
 from app.agents.tools import CATALOG, allowed_actions
+from app.analysis.forecast import prob_label
 from app.analysis.models import Confidence, ConfounderResult, DistrictAssessment, Forecast, Signal
 
 NON_EPIDEMIC_TITLES: dict[str, tuple[str, str]] = {
@@ -144,7 +145,7 @@ def offline_recommendations(a: DistrictAssessment, forecast: Forecast) -> list[R
     if max(forecast.breach_prob_beds) >= 0.5:
         beds = max(int(math.ceil(peak_p90 - forecast.beds_total)), 5)
         add("prepose_capacity", f"Bed occupancy is projected to exceed capacity (P(breach) "
-            f"{max(forecast.breach_prob_beds):.0%}); pre-position {beds} surge beds.", [forecast.forecast_id],
+            f"{prob_label(max(forecast.breach_prob_beds))}); pre-position {beds} surge beds.", [forecast.forecast_id],
             beds=beds)
     add("draft_public_advisory", "Intervention-grade evidence: prepare a population-level advisory (draft only).",
         [sig.signal_id, crit["e3_confounders"].criterion_id], syndrome=sig.syndrome)

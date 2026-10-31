@@ -23,6 +23,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { post, useActions, useAnalysis, useSystem } from "../lib/api";
 import { shortDate } from "../lib/format";
 import { useApp, type Page } from "../lib/state";
+import { Avatar, NotificationBell, PAGE_COPY, PrimaryCta, SearchPill } from "./Header";
 
 interface NavItem {
   page: Page;
@@ -176,7 +177,9 @@ function Clock() {
   );
 }
 
-export function TopBar({ title, onHelp }: { title: string; onHelp: () => void }) {
+export function TopBar({ onHelp }: { onHelp: () => void }) {
+  const { page } = useApp();
+  const copy = PAGE_COPY[page];
   const sys = useSystem();
   const analysis = useAnalysis();
   const { scenarioLabel } = useApp();
@@ -186,12 +189,10 @@ export function TopBar({ title, onHelp }: { title: string; onHelp: () => void })
   const offline = !!sys.error;
 
   return (
-    <header className="glass sticky top-3 z-20 flex items-center gap-4 px-4 py-2.5">
-      <div className="min-w-0 flex-1">
-        <div className="label-caps">Sentinel · Tamil Nadu public-health watch</div>
-        <h1 className="truncate text-lg font-semibold text-ink">{title}</h1>
-      </div>
-
+    <header className="glass relative z-30 flex flex-col gap-3 px-5 pb-4 pt-3">
+      <div className="flex items-center gap-3">
+      <SearchPill />
+      <div className="flex-1" />
       <span
         className="num inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[#F2A65A] bg-[#F2A65A]/20 px-2.5 py-1 text-[10.5px] font-bold tracking-[0.12em] text-[#7A4308]"
         title="All surveillance numbers are simulated. City names are real; populations are simulated catchments."
@@ -228,7 +229,20 @@ export function TopBar({ title, onHelp }: { title: string; onHelp: () => void })
         <OctagonX size={15} />
         {killed ? "KILL SWITCH ON" : "KILL SWITCH"}
       </button>
+      <NotificationBell />
+      <Avatar />
       <KillSwitchDialog open={killOpen} engaged={killed} onClose={() => setKillOpen(false)} />
+      </div>
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <div className="label-caps">Sentinel · Tamil Nadu public-health watch</div>
+          <motion.h1 key={page} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="mt-0.5 text-[30px] font-semibold leading-tight tracking-tight text-ink">
+            {copy.title}
+          </motion.h1>
+          <p className="mt-0.5 text-[13.5px] text-ink-2">{copy.subtitle}</p>
+        </div>
+        <PrimaryCta />
+      </div>
     </header>
   );
 }

@@ -5,7 +5,7 @@ import { Footer, Sidebar, TopBar } from "./components/Shell";
 import { LoadingBlock } from "./components/ui";
 import { useAnalysis, useCaseFile } from "./lib/api";
 import { useEvidence } from "./lib/evidence";
-import { useApp, type Page } from "./lib/state";
+import { useApp } from "./lib/state";
 import ActionQueue from "./pages/ActionQueue";
 import Capacity from "./pages/Capacity";
 import CommandCenter from "./pages/CommandCenter";
@@ -13,16 +13,6 @@ import Evaluation from "./pages/Evaluation";
 import Investigation from "./pages/Investigation";
 import ScenarioLab from "./pages/ScenarioLab";
 import SignalExplorer from "./pages/SignalExplorer";
-
-const TITLES: Record<Page, string> = {
-  command: "Command Center",
-  signals: "Signal Explorer",
-  investigation: "Investigation",
-  capacity: "Capacity Forecast",
-  actions: "Action Queue",
-  evaluation: "Evaluation",
-  lab: "Scenario Lab",
-};
 
 const ONBOARD_KEY = "sentinel.onboarded.v1";
 
@@ -52,7 +42,7 @@ export default function App() {
       <div className="relative z-10 mx-auto flex min-h-full max-w-[1920px] gap-3 p-3">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <TopBar title={TITLES[page]} onHelp={() => setHelp(true)} />
+          <TopBar onHelp={() => setHelp(true)} />
           <AnimatePresence mode="wait">
             <motion.main key={page} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="min-w-0 flex-1">
               {ready ? (

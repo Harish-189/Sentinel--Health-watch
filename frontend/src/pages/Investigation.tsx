@@ -1,8 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertOctagon, ArrowRight, Check, CheckCircle2, CircleDashed, Cpu, Loader2, RefreshCw, ShieldCheck, WifiOff, X } from "lucide-react";
+import { useEffect } from "react";
+import { DistrictPicker } from "../components/DistrictPicker";
 import { EvidenceGraph } from "../components/EvidenceGraph";
 import { Badge, CountUp, EmptyState, ErrorState, IdChip, LoadingBlock, Panel, TierChip } from "../components/ui";
-import { useDistricts, useRunParams } from "../lib/api";
+import { useRunParams } from "../lib/api";
 import { pct, titleCase } from "../lib/format";
 import { useApp } from "../lib/state";
 import { STEPS, useAnalyzeStream } from "../lib/stream";
@@ -10,38 +12,30 @@ import type { Assessment, CaseFile, Hypothesis, StepEvent } from "../lib/types";
 import { color, confounderStatus, motion as mo, tier as tierTok, TIERS } from "../theme";
 
 export default function Investigation() {
-  const { district, setDistrict, go } = useApp();
+  const { district, setDistrict, go, rerunTick } = useApp();
   const p = useRunParams();
-  const districts = useDistricts();
   const s = useAnalyzeStream({ ...p, district });
   const cf = s.casefile;
+  // Header CTA "Re-run agents" bumps rerunTick.
+  useEffect(() => {
+    if (rerunTick) s.run();
+  }, [rerunTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex flex-col gap-3">
       <Panel bodyClass="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
-        <div className="min-w-[200px]">
-          <div className="label-caps">Case file</div>
-          <div className="mt-0.5 flex items-center gap-2">
-            <select value={district} onChange={(e) => setDistrict(e.target.value)} className="rounded-lg border border-line/30 bg-white/85 px-2 py-1 text-lg font-semibold text-ink outline-none focus:border-accent/60" aria-label="District">
-              {(districts.data ?? []).map((d) => (
-                <option key={d.code} value={d.code} className="bg-surface">
-                  {d.name}
-                </option>
-              ))}
-            </select>
-            <span className="num text-xs text-ink-3">{district}</span>
-          </div>
+        <div>
+          <div className="label-caps mb-1">Case file</div>
+          <DistrictPicker value={district} onChange={setDistrict} />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 max-w-full items-center gap-3">
           {cf ? <TierChip tier={cf.assessment.gate.tier} size="lg" label /> : <div className="shimmer h-9 w-48" />}
         </div>
         {cf && <Gauge a={cf.assessment} />}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {cf && <VerifierBadge cf={cf} />}
           {cf && <ModeBadge cf={cf} />}
-          <button onClick={s.run} disabled={s.running} className="inline-flex items-center gap-1.5 rounded-lg border border-line/30 px-3 py-2 text-xs text-ink-2 hover:border-accent/50 hover:text-accent-ink disabled:opacity-50">
-            <RefreshCw size={13} className={s.running ? "animate-spin" : ""} /> Re-run agents
-          </button>
+          {s.running && <span className="inline-flex items-center gap-1.5 text-xs text-ink-3"><RefreshCw size={13} className="animate-spin" /> Agents running…</span>}
         </div>
       </Panel>
 
@@ -104,12 +98,15 @@ function Gauge({ a }: { a: Assessment }) {
       </svg>
       <div>
         <div className="label-caps">Confidence</div>
-        <div className="text-2xl font-semibold leading-none text-ink">
-          <CountUp value={point * 100} suffix="%" />
+        <div className="flex items-baseline gap-1.5 leading-none text-ink">
+          <span className="text-2xl font-semibold">
+            <CountUp value={point * 100} suffix="%" />
+          </span>
+          <span className="num text-[13px] font-medium text-ink-2">
+            [{Math.round(low * 100)}–{Math.round(high * 100)}]
+          </span>
         </div>
-        <div className="num mt-0.5 text-[10.5px] text-ink-3">
-          P10–P90 {pct(low)}–{pct(high)}
-        </div>
+        <div className="mt-0.5 text-[10.5px] text-ink-3">bootstrap P10–P90 interval</div>
       </div>
     </div>
   );

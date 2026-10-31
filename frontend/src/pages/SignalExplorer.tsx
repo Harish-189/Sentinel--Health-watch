@@ -1,28 +1,32 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { axis, EChart, tooltip, type Option } from "../components/EChart";
-import { EmptyState, IdChip, Panel, Q, Segmented, TierChip } from "../components/ui";
+import { SyndromeRow } from "../components/SyndromeRow";
+import { EmptyState, IdChip, Panel, Q, TierChip } from "../components/ui";
 import { useAnalysis, useDistricts, useSeries } from "../lib/api";
 import { metricLabel, shortDate, signed, sourceLabel } from "../lib/format";
 import { useApp } from "../lib/state";
 import type { Anomaly, SeriesDetection, Signal } from "../lib/types";
 import { color, font, source as srcColor } from "../theme";
 
-type Syndrome = "respiratory" | "gastrointestinal";
+type Syndrome = "respiratory" | "gastrointestinal" | "febrile_rash" | "other";
+const WINDOW = 45; // days shown as capsules (legible at 1080p)
 
 // One representative series per source and syndrome, in expected lead order.
 const PANELS: Record<Syndrome, [string, string][]> = {
   respiratory: [["pharmacy", "cough_cold"], ["absenteeism", "school_rate"], ["mobility", "mobility_index"], ["clinic", "respiratory"], ["lab", "panel_A_positivity"], ["capacity", "admissions"]],
   gastrointestinal: [["pharmacy", "ors_rehydration"], ["absenteeism", "school_rate"], ["mobility", "mobility_index"], ["clinic", "gastrointestinal"], ["lab", "panel_B_positivity"], ["capacity", "admissions"]],
+  febrile_rash: [["pharmacy", "antipyretic"], ["absenteeism", "school_rate"], ["mobility", "mobility_index"], ["clinic", "febrile_rash"], ["lab", "panel_A_positivity"], ["capacity", "admissions"]],
+  other: [["pharmacy", "antipyretic"], ["absenteeism", "workplace_rate"], ["mobility", "mobility_index"], ["clinic", "other"], ["lab", "panel_B_positivity"], ["capacity", "admissions"]],
 };
 const colorOf = (s: string) => srcColor[s === "capacity" ? "hospital" : s] ?? color.textSecondary;
 
 export default function SignalExplorer() {
-  const { district, setDistrict } = useApp();
+  const { district, setDistrict, syndrome, setSyndrome } = useApp();
   const districts = useDistricts();
   const analysis = useAnalysis();
   const a = analysis.data?.assessments.find((x) => x.district === district);
-  const [syndrome, setSyndrome] = useState<Syndrome | null>(null);
-  const syn: Syndrome = syndrome ?? ((a?.signal?.syndrome as Syndrome) || "respiratory");
+  // "All" follows the district's own corroborated signal.
+  const syn: Syndrome = syndrome !== "all" ? syndrome : ((a?.signal?.syndrome as Syndrome) || "respiratory");
   const series = useSeries(district);
 
   return (
@@ -41,9 +45,8 @@ export default function SignalExplorer() {
             );
           })}
         </div>
-        <span className="label-caps ml-auto">Syndrome</span>
-        <Segmented value={syn} onChange={setSyndrome} options={[{ value: "respiratory", label: "Respiratory" }, { value: "gastrointestinal", label: "Gastrointestinal" }]} />
       </Panel>
+      <SyndromeRow value={syndrome} onChange={setSyndrome} />
 
       <Q q={series} label="Scoring series against seasonal baselines" rows={8}>
         {(data) => (
@@ -66,36 +69,53 @@ export default function SignalExplorer() {
 function SourcePanel({ s, anomalies, delay }: { s: SeriesDetection; anomalies: Anomaly[]; delay: number }) {
   const c = colorOf(s.source);
   const option = useMemo<Option>(() => {
-    const x = s.dates.map(shortDate);
-    const flagged = s.z.map((z, i) => (z !== null && z >= 3 ? s.observed[i] : null));
+    // Range capsules: one rounded bar per day spanning the expected range (soft grey), observed value as a dot.
+    // Anomalous days (z >= 3) turn coral.
+    const o = Math.max(0, s.days.length - WINDOW);
+    const cut = <T,>(arr: T[]) => arr.slice(o);
+    const x = cut(s.dates).map(shortDate);
+    const z = cut(s.z);
+    const lower = cut(s.lower);
+    const upper = cut(s.upper);
+    const obs = cut(s.observed);
+    const hot = z.map((v) => v !== null && v >= 3);
+    const lo = Math.min(...lower, ...obs.filter((v): v is number => v !== null));
+    const hi = Math.max(...upper, ...obs.filter((v): v is number => v !== null));
+    const pad = (hi - lo) * 0.08;
     return {
       grid: { left: 44, right: 12, top: 14, bottom: 24 },
       tooltip: {
         ...tooltip,
+        trigger: "axis",
+        axisPointer: { type: "shadow", shadowStyle: { color: "rgba(95,189,191,0.12)" } },
         formatter: (ps: { dataIndex: number }[]) => {
-          const i = ps[0]?.dataIndex ?? 0;
+          const i = (ps[0]?.dataIndex ?? 0) + o;
           const z = s.z[i];
           return `<div style="font-family:${font.mono};font-size:11px"><b>${s.dates[i]}</b><br/>observed <b>${s.observed[i]?.toFixed(1) ?? "–"}</b><br/>expected ${s.expected[i].toFixed(1)} <span style="opacity:.6">[${s.lower[i].toFixed(1)}–${s.upper[i].toFixed(1)}]</span><br/>z <b style="color:${z !== null && z >= 3 ? "#E5535D" : "inherit"}">${z?.toFixed(2) ?? "–"}</b></div>`;
         },
       },
-      xAxis: { type: "category", data: x, boundaryGap: false, ...axis, axisLabel: { ...axis.axisLabel, interval: 14 }, splitLine: { show: false } },
-      yAxis: { type: "value", scale: true, ...axis, axisLabel: { ...axis.axisLabel, formatter: (v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}k` : v < 1 && v > 0 ? v.toFixed(2) : String(Math.round(v))) } },
+      xAxis: { type: "category", data: x, ...axis, axisLabel: { ...axis.axisLabel, interval: 9 }, splitLine: { show: false } },
+      yAxis: { type: "value", min: lo - pad, max: hi + pad, ...axis, axisLabel: { ...axis.axisLabel, showMinLabel: false, showMaxLabel: false, formatter: (v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}k` : Math.abs(v) < 1 && v !== 0 ? v.toFixed(2) : String(Math.round(v))) } },
       series: [
-        { name: "lower", type: "line", data: s.lower, stack: "band", symbol: "none", lineStyle: { opacity: 0 }, silent: true },
-        { name: "Baseline band", type: "line", data: s.upper.map((u, i) => u - s.lower[i]), stack: "band", symbol: "none", lineStyle: { opacity: 0 }, areaStyle: { color: "rgba(23,54,58,0.08)" }, silent: true },
-        { name: "Expected", type: "line", data: s.expected, symbol: "none", lineStyle: { color: "rgba(23,54,58,0.45)", width: 1, type: "dashed" }, silent: true },
+        // Stacks start at value 0: an invisible base up to the lower bound (clipped below the axis), then the capsule.
+        { name: "base", type: "bar", stack: "range", data: lower, itemStyle: { color: "transparent" }, silent: true, barWidth: "58%" },
+        {
+          name: "Expected range",
+          type: "bar",
+          stack: "range",
+          data: upper.map((u, i) => ({ value: u - lower[i], itemStyle: { color: hot[i] ? "rgba(229,83,93,0.28)" : "rgba(23,54,58,0.10)", borderRadius: 99 } })),
+          barWidth: "58%",
+          silent: true,
+        },
         {
           name: "Observed",
-          type: "line",
-          data: s.observed,
-          symbol: "none",
-          lineStyle: { color: c, width: 2 },
-          markArea: { silent: true, itemStyle: { color: "rgba(229,83,93,0.08)" }, data: anomalies.map((a) => [{ xAxis: shortDate(a.start_date) }, { xAxis: shortDate(a.end_date) }]) },
+          type: "scatter",
+          data: obs.map((v, i) => (v === null ? null : { value: v, symbolSize: hot[i] ? 8 : 5.5, itemStyle: { color: hot[i] ? "#E5535D" : c, borderColor: "#fff", borderWidth: hot[i] ? 1.5 : 1 } })),
+          z: 5,
         },
-        { name: "Anomaly", type: "scatter", data: flagged, symbolSize: 8, itemStyle: { color: "#E5535D", borderColor: color.surface, borderWidth: 2 }, z: 5 },
       ],
     };
-  }, [s, anomalies, c]);
+  }, [s, c]);
   const latestZ = [...s.z].reverse().find((z) => z !== null) ?? null;
   return (
     <Panel

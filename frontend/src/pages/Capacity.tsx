@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { axis, EChart, tooltip, type Option } from "../components/EChart";
 import { CountUp, ErrorState, IdChip, LoadingBlock, Panel, TierChip, Toggle } from "../components/ui";
 import { useAnalysis, useDistricts, useForecast } from "../lib/api";
-import { pct, shortDate } from "../lib/format";
+import { probLabel, shortDate } from "../lib/format";
 import { useApp } from "../lib/state";
 import type { Forecast } from "../lib/types";
 import { color, font, tier as tierTok } from "../theme";
@@ -32,7 +32,7 @@ export default function Capacity() {
             return (
               <button key={d.code} onClick={() => setDistrict(d.code)} className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${d.code === district ? "border-accent/60 bg-accent/10 text-ink" : "border-line/30 text-ink-2 hover:border-line/50"}`}>
                 {d.name}
-                {pb >= 0.2 && <span className="num text-[10.5px]" style={{ color: pb >= 0.5 ? tierTok.E3.ink : tierTok.E2.ink }}>{pct(pb)}</span>}
+                {pb >= 0.2 && <span className="num text-[10.5px]" style={{ color: pb >= 0.5 ? tierTok.E3.ink : tierTok.E2.ink }}>{probLabel(pb)}</span>}
               </button>
             );
           })}
@@ -80,15 +80,15 @@ function Callout({ f, base, withInt, intervention, tierOf }: { f: Forecast; base
         <div>
           <div className="label-caps">Bed breach probability · 14 days</div>
           <div className="mt-1 text-4xl font-semibold leading-none" style={{ color: sev }}>
-            <CountUp value={pb * 100} suffix="%" />
+            <span className="num">{probLabel(pb)}</span>
           </div>
           <div className="mt-1.5 text-[12px] text-ink-2">
             {pb >= 0.5 ? (
               <>
-                Occupancy is projected to exceed <span className="num">{f.beds_total.toFixed(0)}</span> beds from <b className="text-ink">{dayLabel(f.breach_day_beds)}</b>.
+                Occupancy is projected to exceed <span className="num">{f.beds_total.toFixed(0)}</span> beds from <b className="text-ink">{dayLabel(f.breach_day_beds)}</b>; P10–P90 peak <span className="num">{Math.max(...f.beds.p10).toFixed(0)}–{Math.max(...f.beds.p90).toFixed(0)}</span>.
               </>
             ) : (
-              <>Capacity holds in most trajectories{pb > 0 ? `; ${pct(pb)} of runs breach.` : "."}</>
+              <>Capacity holds in most trajectories{pb > 0 ? `; ${probLabel(pb)} of runs breach.` : "."}</>
             )}
           </div>
           <div className="mt-2 flex items-center gap-2">
@@ -97,7 +97,7 @@ function Callout({ f, base, withInt, intervention, tierOf }: { f: Forecast; base
           </div>
         </div>
       </div>
-      <Mini label="ICU breach probability" value={<CountUp value={pi * 100} suffix="%" />} hint={`capacity ${f.icu_total.toFixed(0)} · ${dayLabel(f.breach_day_icu)}`} accent={pi >= 0.5 ? tierTok.E3.ink : undefined} />
+      <Mini label="ICU breach probability" value={<span className="num">{probLabel(pi)}</span>} hint={`P10–P90 peak ${Math.max(...f.icu.p10).toFixed(0)}–${Math.max(...f.icu.p90).toFixed(0)} of ${f.icu_total.toFixed(0)} · ${dayLabel(f.breach_day_icu)}`} accent={pi >= 0.5 ? tierTok.E3.ink : undefined} />
       <Mini label="Peak occupied beds (P50)" value={<CountUp value={peak} />} hint={`P90 ${Math.max(...f.beds.p90).toFixed(0)} · of ${f.beds_total.toFixed(0)}`} />
       <Mini
         label={intervention ? "Intervention effect" : "Growth rate"}
@@ -181,13 +181,13 @@ function FanPanel({ f, kind }: { f: Forecast; kind: "beds" | "icu" }) {
         </span>
       }
       subtitle="Observed (solid) · median forecast (dashed) · P10–P90 band (shaded)"
-      right={<span className="num text-xs text-ink-3">max P(breach) {pct(Math.max(...prob))}</span>}
+      right={<span className="num text-xs text-ink-3">max P(breach) {probLabel(Math.max(...prob))}</span>}
       bodyClass="px-2 pb-2 pt-1"
     >
       <EChart option={option} height={300} />
       <div className="flex h-8 items-end gap-[2px] pb-1 pr-[64px]" style={{ paddingLeft: `calc(46px + (100% - 110px) * ${f.history_days.length / (f.history_days.length + f.days.length - 1)})` }} aria-label="Daily breach probability">
         {prob.map((p, i) => (
-          <div key={i} className="flex-1 rounded-t-[2px]" title={`${shortDate(f.dates[i])}: P(breach) ${pct(p)}`} style={{ height: `${Math.max(4, p * 100)}%`, background: p >= 0.5 ? "#E5535D" : p >= 0.2 ? "#F2A65A" : "rgba(23,54,58,0.1)" }} />
+          <div key={i} className="flex-1 rounded-t-[2px]" title={`${shortDate(f.dates[i])}: P(breach) ${probLabel(p)}`} style={{ height: `${Math.max(4, p * 100)}%`, background: p >= 0.5 ? "#E5535D" : p >= 0.2 ? "#F2A65A" : "rgba(23,54,58,0.1)" }} />
         ))}
       </div>
       <div className="pr-[64px] text-right text-[10px] text-ink-3">Daily P(breach) over the forecast window</div>

@@ -4,6 +4,9 @@ import { useSystem } from "./api";
 export type Page = "command" | "signals" | "investigation" | "capacity" | "actions" | "evaluation" | "lab";
 export const PAGES: Page[] = ["command", "signals", "investigation", "capacity", "actions", "evaluation", "lab"];
 
+/** Syndrome filter shared by the map, Active Signals and Signal Explorer. "all" = no filter. */
+export type SyndromeFilter = "all" | "respiratory" | "gastrointestinal" | "febrile_rash" | "other";
+
 interface AppState {
   page: Page;
   go: (page: Page, district?: string) => void;
@@ -18,6 +21,11 @@ interface AppState {
   /** The scenario actually being shown (resolved from the server defaults). */
   scenarioLabel: string[];
   ready: boolean;
+  syndrome: SyndromeFilter;
+  setSyndrome: (s: SyndromeFilter) => void;
+  /** Incremented to ask the Investigation page to re-run the agent pipeline. */
+  rerunTick: number;
+  rerun: () => void;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -32,6 +40,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [page, setPage] = useState<Page>(pageFromHash);
   const [chosen, setDistrict] = useState<string | null>(null);
   const [scenario, setScenario] = useState<string[] | null>(null);
+  const [syndrome, setSyndrome] = useState<SyndromeFilter>("all");
+  const [rerunTick, setRerunTick] = useState(0);
+  const rerun = useCallback(() => setRerunTick((t) => t + 1), []);
 
   useEffect(() => {
     const onHash = () => setPage(pageFromHash());
@@ -49,8 +60,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const district = chosen ?? sys.data?.default_district ?? "";
   const scenarioLabel = scenario ?? sys.data?.demo_scenario.split("+") ?? [];
   const value = useMemo(
-    () => ({ page, go, district, setDistrict, scenario, setScenario, seed: null, scenarioLabel, ready: !!sys.data }),
-    [page, go, district, scenario, scenarioLabel.join("+"), sys.data], // eslint-disable-line react-hooks/exhaustive-deps
+    () => ({ page, go, district, setDistrict, scenario, setScenario, seed: null, scenarioLabel, ready: !!sys.data, syndrome, setSyndrome, rerunTick, rerun }),
+    [page, go, district, scenario, scenarioLabel.join("+"), sys.data, syndrome, rerunTick, rerun], // eslint-disable-line react-hooks/exhaustive-deps
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

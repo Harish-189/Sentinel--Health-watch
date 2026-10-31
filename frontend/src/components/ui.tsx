@@ -48,7 +48,7 @@ export function TierChip({ tier, size = "md", label = false }: { tier: Tier; siz
   const sz = size === "lg" ? "px-3.5 py-1.5 text-base" : size === "sm" ? "px-1.5 py-0.5 text-[10.5px]" : "px-2 py-0.5 text-xs";
   return (
     <span
-      className={`num inline-flex items-center gap-1.5 rounded-md border font-semibold ${sz} ${t.glow ? "pulse-glow" : ""}`}
+      className={`num inline-flex max-w-full flex-wrap items-center gap-x-1.5 rounded-md border font-semibold ${sz} ${t.glow ? "pulse-glow" : ""}`}
       style={{
         color: t.ink,
         borderColor: `${t.color}aa`,
@@ -59,7 +59,7 @@ export function TierChip({ tier, size = "md", label = false }: { tier: Tier; siz
     >
       <Icon size={size === "lg" ? 15 : size === "sm" ? 10 : 12} strokeWidth={2.4} aria-hidden />
       {tier}
-      {label && <span className="font-sans font-medium opacity-90">· {t.label}</span>}
+      {label && <span className="whitespace-normal font-sans font-medium leading-tight opacity-90">· {t.label}</span>}
     </span>
   );
 }

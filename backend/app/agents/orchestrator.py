@@ -14,7 +14,7 @@ from app.analysis.confounders import LabEvidence, check_all
 from app.analysis.context import AnalysisContext
 from app.analysis.correlate import build_signal, link_spatial
 from app.analysis.evidence import grade
-from app.analysis.forecast import forecast_capacity
+from app.analysis.forecast import forecast_capacity, prob_label
 from app.analysis.models import (
     TIERS,
     AnalysisBundle,
@@ -155,7 +155,8 @@ def assessment_evidence(a: DistrictAssessment) -> dict[str, EvidenceItem]:
     f = a.forecast
     items[f.forecast_id] = EvidenceItem(
         id=f.forecast_id, kind="forecast", district=a.district,
-        summary=f"14-day bed P50 {f.beds.p50[-1]:.0f}/{f.beds_total:.0f}, max P(breach) {max(f.breach_prob_beds):.0%}",
+        summary=f"14-day bed P50 {f.beds.p50[-1]:.0f}/{f.beds_total:.0f}, "
+                f"max P(breach) {prob_label(max(f.breach_prob_beds))}",
         data={"breach_day_beds": f.breach_day_beds, "max_breach_prob": max(f.breach_prob_beds),
               "beds_total": f.beds_total, "p50_end": f.beds.p50[-1], "p90_end": f.beds.p90[-1]})
     return items

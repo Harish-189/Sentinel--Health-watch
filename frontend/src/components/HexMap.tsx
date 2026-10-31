@@ -1,9 +1,10 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Maximize2, Minimize2, Minus, Plus, RotateCcw } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { pct } from "../lib/format";
 import type { District, DistrictFrame } from "../lib/types";
 import { color, tier as tierTok, TIERS } from "../theme";
+import { CalloutLayer, layoutCallouts, type Anchor, type Callout } from "./MapCallouts";
 
 // ------------------------------------------------------------------ projection & geometry
 // Tamil Nadu outline (lon, lat), traced from reference/geometric-map-tamil-nadu-…avif (158 points after
@@ -85,6 +86,8 @@ function placeCells(districts: District[]): Record<string, [number, number]> {
 }
 
 const SILHOUETTE = smoothPath(OUTLINE.map(([lon, lat]) => project(lon, lat)));
+const SIL_X = OUTLINE.map(([lon, lat]) => project(lon, lat)[0]);
+const SIL_BOUNDS = { minX: Math.min(...SIL_X), maxX: Math.max(...SIL_X) };
 const level = (f?: DistrictFrame) => TIERS.indexOf(f?.tier ?? "E0");
 
 // ------------------------------------------------------------------ component
@@ -103,6 +106,8 @@ export function HexMap({
   onSelect,
   height = 420,
   scanning = false,
+  callouts = [],
+  dimmed,
 }: {
   districts: District[];
   frames: Record<string, DistrictFrame>;
@@ -110,6 +115,10 @@ export function HexMap({
   onSelect?: (code: string) => void;
   height?: number;
   scanning?: boolean;
+  /** Floating glass cards pinned to districts (placed in the map's side gutters). */
+  callouts?: Callout[];
+  /** Districts faded out by a filter (e.g. syndrome). */
+  dimmed?: Set<string>;
 }) {
   const reduce = useReducedMotion();
   const box = useRef<HTMLDivElement>(null);
@@ -117,12 +126,52 @@ export function HexMap({
   const [view, setView] = useState<View>(HOME);
   const [full, setFull] = useState(false);
   const drag = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const gRef = useRef<SVGGElement>(null);
+  const [tick, setTick] = useState(0); // re-measure after zoom animations / resizes
+  const measuredView = useRef("1,0,0");
+  const [anchors, setAnchors] = useState<{ map: Record<string, Anchor>; left: number; right: number; h: number }>({ map: {}, left: 0, right: 0, h: 0 });
 
   const pos = useMemo(() => placeCells(districts), [districts]);
   const edges = useMemo(
     () => districts.flatMap((d) => d.neighbors.filter((n) => n > d.code && pos[n]).map((n) => [d.code, n] as const)),
     [districts, pos],
   );
+
+  // Measure cell centres in container pixels so HTML callouts can pin to them.
+  useLayoutEffect(() => {
+    const g = gRef.current;
+    const svg = svgRef.current;
+    const host = box.current;
+    if (!g || !svg || !host) return;
+    const m = g.getScreenCTM();
+    const r = host.getBoundingClientRect();
+    if (!m) return;
+    const toPx = (x: number, y: number) => {
+      const p = svg.createSVGPoint();
+      p.x = x;
+      p.y = y;
+      const q = p.matrixTransform(m);
+      return [q.x - r.left, q.y - r.top] as const;
+    };
+    const [l] = toPx(SIL_BOUNDS.minX, 0);
+    const [rr] = toPx(SIL_BOUNDS.maxX, 0);
+    const mid = (l + rr) / 2;
+    const map: Record<string, Anchor> = {};
+    for (const d of districts) {
+      const [x, y] = toPx(pos[d.code][0], pos[d.code][1]);
+      map[d.code] = { x, y, side: x < mid ? "left" : "right" };
+    }
+    const next = { map, left: l, right: rr, h: host.clientHeight };
+    // Only update when geometry actually moved (avoids a measure -> render -> measure loop).
+    setAnchors((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+  }, [tick, districts, pos, full, height]);
+
+  useEffect(() => {
+    const ro = new ResizeObserver(() => setTick((t) => t + 1));
+    if (box.current) ro.observe(box.current);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const onFs = () => setFull(document.fullscreenElement === box.current);
@@ -165,6 +214,7 @@ export function HexMap({
   return (
     <div ref={box} className={`relative w-full overflow-hidden ${full ? "bg-bg" : ""}`} style={{ height: full ? "100vh" : height }}>
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${VB.w} ${VB.h}`}
         className={`h-full w-full ${view.k > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
         role="img"
@@ -192,7 +242,19 @@ export function HexMap({
           </clipPath>
         </defs>
 
-        <motion.g animate={{ x: view.x, y: view.y, scale: view.k }} transition={reduce || drag.current ? { duration: 0 } : { duration: 0.25 }} style={{ originX: 0, originY: 0 }}>
+        <motion.g
+          ref={gRef}
+          animate={{ x: view.x, y: view.y, scale: view.k }}
+          transition={reduce || drag.current ? { duration: 0 } : { duration: 0.25 }}
+          onAnimationComplete={() => {
+            const key = `${view.k},${view.x},${view.y}`;
+            if (measuredView.current !== key) {
+              measuredView.current = key;
+              setTick((t) => t + 1);
+            }
+          }}
+          style={{ originX: 0, originY: 0 }}
+        >
           {/* State silhouette: soft glow, mint fill, thin teal outline */}
           <path d={SILHOUETTE} fill="#5FBDBF" opacity={0.35} filter="url(#tn-glow)" />
           <path d={SILHOUETTE} fill="url(#tn-fill)" stroke="#5FBDBF" strokeWidth={1.5} strokeLinejoin="round" />
@@ -240,6 +302,8 @@ export function HexMap({
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onSelect?.(d.code)}
                 tabIndex={0}
                 role="button"
+                opacity={dimmed?.has(d.code) ? 0.28 : 1}
+                style={{ transition: "opacity 200ms" }}
                 aria-label={`${d.name}: ${f?.tier ?? "E0"}, ${f?.sources ?? 0} sources`}
                 className="cursor-pointer outline-none [&:focus-visible>path:first-of-type]:stroke-[#17363A]"
               >
@@ -310,6 +374,14 @@ export function HexMap({
           </button>
         ))}
       </div>
+
+      {callouts.length > 0 && (
+        <CalloutLayer
+          callouts={callouts}
+          placed={layoutCallouts(anchors.map, callouts.map((c) => c.code), { left: anchors.left, right: anchors.right, height: anchors.h })}
+          onOpen={(c) => onSelect?.(c)}
+        />
+      )}
 
       <AnimatePresence>
         {hovered && hover && (

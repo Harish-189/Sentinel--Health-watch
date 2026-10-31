@@ -1,12 +1,17 @@
+import { useQueries } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ChevronRight, Pause, Play, Radio, SkipBack } from "lucide-react";
+import { ChevronRight, Pause, Play, Radio, SkipForward } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { InsightCard, StatePulse } from "../components/CommandExtras";
 import { HexMap } from "../components/HexMap";
+import type { Callout } from "../components/MapCallouts";
+import { matchesSyndrome, SyndromeRow, SYNDROMES } from "../components/SyndromeRow";
 import { CountUp, EmptyState, ErrorState, IdChip, LoadingBlock, Panel, TierChip } from "../components/ui";
-import { useActions, useAnalysis, useDistricts, useTimeline } from "../lib/api";
-import { pct, shortDate } from "../lib/format";
-import { useApp } from "../lib/state";
-import type { AnalysisBundle, DistrictFrame, Timeline } from "../lib/types";
+import { api, qs, useActions, useAnalysis, useDistricts, useRunParams, useTimeline } from "../lib/api";
+import { confLabel, pct, probLabel, shortDate } from "../lib/format";
+import { useApp, type SyndromeFilter } from "../lib/state";
+import type { AnalysisBundle, District, DistrictFrame, SeriesResponse, Timeline } from "../lib/types";
+import { whyLine } from "../lib/why";
 import { color, motion as mo, source as srcColor, tier as tierTok, TIERS, type Tier } from "../theme";
 
 function framesFromAnalysis(a: AnalysisBundle): Record<string, DistrictFrame> {
@@ -18,11 +23,13 @@ function framesFromAnalysis(a: AnalysisBundle): Record<string, DistrictFrame> {
   );
 }
 
+const PANEL_H = 760; // shared column height at 1080p
+
 export default function CommandCenter() {
   const analysis = useAnalysis();
   const districts = useDistricts();
   const timeline = useTimeline();
-  const { go, district, setDistrict } = useApp();
+  const { go, district, setDistrict, syndrome, setSyndrome } = useApp();
   const [idx, setIdx] = useState<number | null>(null); // null = live (latest)
   const [playing, setPlaying] = useState(false);
 
@@ -49,63 +56,134 @@ export default function CommandCenter() {
   const isLive = idx === null;
   const view = !isLive && frames[cur] ? frames[cur].districts : liveFrames;
   const viewDate = !isLive && frames[cur] ? frames[cur].date : analysis.data?.as_of_date;
+  const viewDay = !isLive && frames[cur] ? frames[cur].as_of : analysis.data?.as_of;
+
+  const match = (code: string) => matchesSyndrome(analysis.data, code, syndrome, view[code]?.syndrome);
+  const dimmed = useMemo(() => new Set((districts.data ?? []).map((d) => d.code).filter((c) => !match(c))), [districts.data, view, syndrome, analysis.data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const counts = useMemo(() => {
+    const elevated = (districts.data ?? []).filter((d) => (view[d.code]?.tier ?? "E0") !== "E0").map((d) => d.code);
+    return Object.fromEntries(SYNDROMES.map((s) => [s.key, elevated.filter((c) => matchesSyndrome(analysis.data, c, s.key, view[c]?.syndrome)).length])) as Record<SyndromeFilter, number>;
+  }, [districts.data, view, analysis.data]);
+
+  const callouts = useCallouts(districts.data ?? [], view, viewDay, syndrome, dimmed);
 
   if (analysis.error) return <Panel><ErrorState error={analysis.error} retry={() => analysis.refetch()} /></Panel>;
 
+  const filtered = Object.fromEntries(Object.entries(view).filter(([c]) => !dimmed.has(c)));
+
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)_300px]">
-      <ActiveSignals frames={view} names={Object.fromEntries((districts.data ?? []).map((d) => [d.code, d.name]))} loading={!analysis.data} analysis={isLive ? analysis.data : undefined} onOpen={(d) => go("investigation", d)} />
+    <div className="flex flex-col gap-3">
+      <SyndromeRow value={syndrome} onChange={setSyndrome} counts={counts} />
 
-      <Panel
-        title={
-          <span className="flex items-center gap-2">
-            District evidence map
-            {isLive ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-good/30 px-2 py-[1px] text-[10px] font-semibold text-good">
-                <Radio size={10} className="blink" /> LIVE
-              </span>
-            ) : (
-              <span className="num rounded-full border border-accent/40 px-2 py-[1px] text-[10px] font-semibold text-accent-ink">REPLAY</span>
-            )}
-          </span>
-        }
-        subtitle={viewDate ? `Aggregates through ${shortDate(viewDate)} · click a district to investigate` : "Loading…"}
-        right={<TierLegend />}
-        delay={0.05}
-        bodyClass="p-2"
-      >
-        {districts.data && analysis.data ? (
-          <HexMap
-            districts={districts.data}
-            frames={view}
-            selected={district}
-            onSelect={(d) => {
-              setDistrict(d);
-              go("investigation", d);
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[300px_minmax(0,1fr)_300px]">
+        <div className="flex min-h-0 flex-col gap-3 2xl:h-[var(--ph)]" style={{ ["--ph" as string]: `${PANEL_H}px` }}>
+          <ActiveSignals frames={filtered} names={Object.fromEntries((districts.data ?? []).map((d) => [d.code, d.name]))} loading={!analysis.data} analysis={isLive ? analysis.data : undefined} onOpen={(d) => go("investigation", d)} />
+          {districts.data && <StatePulse districts={districts.data} frames={view} />}
+        </div>
+
+        <Panel
+          className="2xl:h-[760px]"
+          title={
+            <span className="flex items-center gap-2">
+              District evidence map
+              {isLive ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-good/30 px-2 py-[1px] text-[10px] font-semibold text-good">
+                  <Radio size={10} className="blink" /> LIVE
+                </span>
+              ) : (
+                <span className="num rounded-full border border-accent/40 px-2 py-[1px] text-[10px] font-semibold text-accent-ink">REPLAY</span>
+              )}
+            </span>
+          }
+          subtitle={viewDate ? `Aggregates through ${shortDate(viewDate)} · click a district or card to investigate` : "Loading…"}
+          right={<TierLegend />}
+          delay={0.05}
+          bodyClass="flex flex-col p-2"
+        >
+          {districts.data && analysis.data ? (
+            <HexMap
+              districts={districts.data}
+              frames={view}
+              selected={district}
+              onSelect={(d) => {
+                setDistrict(d);
+                go("investigation", d);
+              }}
+              height={600}
+              scanning={playing || analysis.isFetching}
+              callouts={callouts}
+              dimmed={dimmed}
+            />
+          ) : (
+            <div className="p-4">
+              <LoadingBlock label="Running detectors across 8 districts" rows={8} />
+            </div>
+          )}
+          <DayPills
+            timeline={timeline.data}
+            loading={timeline.isLoading}
+            error={timeline.error}
+            cur={cur}
+            isLive={isLive}
+            playing={playing}
+            onPlay={() => {
+              if (!frames.length) return;
+              if (isLive || cur >= last) setIdx(0);
+              setPlaying((p) => !p);
             }}
-            height={620}
-            scanning={playing || analysis.isFetching}
+            onSeek={(i) => {
+              setPlaying(false);
+              setIdx(i >= last ? null : i);
+            }}
           />
-        ) : (
-          <div className="p-4">
-            <LoadingBlock label="Running detectors across 8 districts" rows={8} />
-          </div>
-        )}
-        <Scrubber timeline={timeline.data} loading={timeline.isLoading} error={timeline.error} cur={cur} isLive={isLive} playing={playing} onPlay={() => {
-          if (!frames.length) return;
-          if (isLive || cur >= last) setIdx(0);
-          setPlaying((p) => !p);
-        }} onSeek={(i) => {
-          setPlaying(false);
-          setIdx(i >= last ? null : i);
-        }} />
-      </Panel>
+        </Panel>
 
-      <div className="lg:col-span-2 2xl:col-span-1">
-        <Kpis analysis={analysis.data} timeline={timeline.data} />
+        <div className="lg:col-span-2 2xl:col-span-1 2xl:h-[760px]">
+          <RightRail analysis={analysis.data} timeline={timeline.data} onLab={() => go("lab")} />
+        </div>
       </div>
     </div>
   );
+}
+
+// ------------------------------------------------------------------ map callouts (real series data)
+
+const METRIC_FOR: Record<string, { metric: string; label: string }> = {
+  respiratory: { metric: "respiratory", label: "Respiratory visits" },
+  gastrointestinal: { metric: "gastrointestinal", label: "GI visits" },
+  febrile_rash: { metric: "febrile_rash", label: "Febrile-rash visits" },
+  other: { metric: "other", label: "Other clinic visits" },
+};
+
+/** E2/E3 districts get a pinned card: 7-day clinic excess vs the seasonal baseline + a 21-day sparkline. */
+function useCallouts(districts: District[], view: Record<string, DistrictFrame>, viewDay: number | undefined, syndrome: SyndromeFilter, dimmed: Set<string>): Callout[] {
+  const p = useRunParams();
+  const hot = districts.filter((d) => TIERS.indexOf(view[d.code]?.tier ?? "E0") >= 2 && !dimmed.has(d.code));
+  const results = useQueries({
+    queries: hot.map((d) => ({
+      queryKey: ["series", p, d.code],
+      queryFn: () => api<SeriesResponse>(`/api/series${qs({ ...p, district: d.code })}`),
+      staleTime: Infinity,
+      gcTime: Infinity,
+    })),
+  });
+  return hot.flatMap((d, i) => {
+    const data = results[i]?.data;
+    if (!data || viewDay === undefined) return [];
+    const syn = syndrome !== "all" ? syndrome : (view[d.code]?.syndrome ?? "respiratory");
+    const spec = METRIC_FOR[syn] ?? METRIC_FOR.respiratory;
+    const s = data.series.find((x) => x.source === "clinic" && x.metric === spec.metric);
+    if (!s) return [];
+    const end = s.days.findIndex((day) => day > viewDay);
+    const stop = end === -1 ? s.days.length : end;
+    const obs = s.observed.slice(Math.max(0, stop - 21), stop);
+    const exp = s.expected.slice(Math.max(0, stop - 21), stop);
+    const o7 = obs.slice(-7).filter((v): v is number => v !== null);
+    const e7 = exp.slice(-7);
+    const excess = o7.length ? o7.reduce((a, b) => a + b, 0) / o7.length / (e7.reduce((a, b) => a + b, 0) / e7.length) - 1 : 0;
+    const anomaly = data.anomalies.find((a) => a.source === "clinic" && a.metric === spec.metric && a.start_day <= viewDay);
+    return [{ code: d.code, name: d.name, tier: view[d.code].tier, stat: `${spec.label} ${excess >= 0 ? "+" : "−"}${Math.abs(Math.round(excess * 100))}% vs expected`, observed: obs, expected: exp, evidenceId: anomaly?.evidence_id }];
+  });
 }
 
 function TierLegend() {
@@ -121,25 +199,27 @@ function TierLegend() {
   );
 }
 
+// ------------------------------------------------------------------ active signals
+
 function ActiveSignals({ frames, names, loading, analysis, onOpen }: { frames: Record<string, DistrictFrame>; names: Record<string, string>; loading: boolean; analysis?: AnalysisBundle; onOpen: (d: string) => void }) {
   const rows = Object.entries(frames)
     .filter(([, f]) => f.tier !== "E0")
     .sort((a, b) => TIERS.indexOf(b[1].tier) - TIERS.indexOf(a[1].tier) || b[1].confidence - a[1].confidence);
   return (
-    <Panel title="Active signals" subtitle={`${rows.length} district${rows.length === 1 ? "" : "s"} above background`} bodyClass="p-2">
+    <Panel className="min-h-0 flex-1" title="Active signals" subtitle={`${rows.length} district${rows.length === 1 ? "" : "s"} above background`} bodyClass="min-h-0 overflow-y-auto p-2">
       {loading ? (
         <div className="p-2">
           <LoadingBlock rows={6} />
         </div>
       ) : rows.length === 0 ? (
-        <EmptyState title="All quiet" body="No district shows a sustained anomaly. Detectors keep scoring every series against its seasonal baseline." />
+        <EmptyState title="All quiet" body="No district matches this filter above background. Detectors keep scoring every series against its seasonal baseline." />
       ) : (
         <ul className="flex flex-col gap-1.5">
           {rows.map(([code, f], i) => {
             const a = analysis?.assessments.find((x) => x.district === code);
             return (
               <motion.li key={code} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * mo.stagger, ease: mo.ease }}>
-                <button onClick={() => onOpen(code)} className="group w-full rounded-xl border border-line/30 bg-white/50 p-3 text-left transition-colors hover:border-accent/30 hover:bg-white/80" style={{ borderLeft: `3px solid ${tierTok[f.tier].color}` }}>
+                <button onClick={() => onOpen(code)} className="group w-full rounded-xl border border-line/30 bg-white/50 p-3 text-left transition-colors duration-150 hover:border-accent/40 hover:bg-white/85" style={{ borderLeft: `3px solid ${tierTok[f.tier].color}` }}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <div className="truncate text-[13px] font-semibold text-ink">{names[code] ?? code}</div>
@@ -149,11 +229,14 @@ function ActiveSignals({ frames, names, loading, analysis, onOpen }: { frames: R
                     </div>
                     <TierChip tier={f.tier} size="sm" />
                   </div>
+                  {a && <p className="mt-1.5 text-[11.5px] leading-snug text-ink-2">{whyLine(a)}</p>}
                   <div className="mt-2 flex items-center gap-2">
                     <div className="h-1 flex-1 overflow-hidden rounded-full bg-ink/10">
                       <motion.div className="h-full rounded-full" style={{ background: tierTok[f.tier].color }} initial={{ width: 0 }} animate={{ width: pct(f.confidence) }} transition={{ duration: 0.6, ease: mo.ease }} />
                     </div>
-                    <span className="num w-9 text-right text-[11px] text-ink-2">{pct(f.confidence)}</span>
+                    <span className="num whitespace-nowrap text-right text-[10.5px] text-ink-2" title="Confidence with bootstrap P10–P90 interval">
+                      {a ? confLabel(a.confidence) : pct(f.confidence)}
+                    </span>
                   </div>
                   {a?.signal && (
                     <div className="mt-2 flex items-center justify-between">
@@ -177,7 +260,9 @@ function ActiveSignals({ frames, names, loading, analysis, onOpen }: { frames: R
   );
 }
 
-function Scrubber({ timeline, loading, error, cur, isLive, playing, onPlay, onSeek }: { timeline?: Timeline; loading: boolean; error: unknown; cur: number; isLive: boolean; playing: boolean; onPlay: () => void; onSeek: (i: number) => void }) {
+// ------------------------------------------------------------------ timeline: 6 day pills + play/pause
+
+function DayPills({ timeline, loading, error, cur, isLive, playing, onPlay, onSeek }: { timeline?: Timeline; loading: boolean; error: unknown; cur: number; isLive: boolean; playing: boolean; onPlay: () => void; onSeek: (i: number) => void }) {
   if (error) return <div className="px-3 pb-2 text-xs text-e3">Replay unavailable: {(error as Error).message}</div>;
   if (loading || !timeline)
     return (
@@ -187,54 +272,71 @@ function Scrubber({ timeline, loading, error, cur, isLive, playing, onPlay, onSe
     );
   const frames = timeline.frames;
   const maxTier = (f: (typeof frames)[number]): Tier => TIERS[Math.max(0, ...Object.values(f.districts).map((d) => TIERS.indexOf(d.tier)))];
-  const onsetIdx = frames.findIndex((f) => f.as_of >= timeline.onset_day);
+  // A 6-day window that ends at the current frame (the last 6 days when live).
+  const end = Math.max(cur, 5);
+  const window = frames.slice(end - 5, end + 1).map((f, k) => ({ f, i: end - 5 + k }));
+  const progress = frames.length > 1 ? cur / (frames.length - 1) : 1;
   return (
-    <div className="border-t border-line/30 px-3 pb-2 pt-5">
+    <div className="mt-auto border-t border-line/30 px-3 pb-1 pt-3">
       <div className="flex items-center gap-3">
-        <button onClick={onPlay} className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent-ink hover:bg-accent/20" aria-label={playing ? "Pause replay" : "Play replay"}>
-          {playing ? <Pause size={13} /> : <Play size={13} />} {playing ? "Pause" : "Replay"}
-        </button>
-        <button onClick={() => onSeek(frames.length - 1)} disabled={isLive} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-ink-3 hover:text-ink disabled:opacity-40" title="Jump to live">
-          <SkipBack size={13} className="rotate-180" /> Live
-        </button>
-        <div className="relative flex-1">
-          <div className="flex h-7 gap-[2px]">
-            {frames.map((f, i) => {
-              const t = maxTier(f);
-              return (
-                <button
-                  key={f.as_of}
-                  onClick={() => onSeek(i)}
-                  className="relative flex-1 rounded-[3px] transition-all"
-                  style={{ background: t === "E0" ? "rgba(23,54,58,0.1)" : `${tierTok[t].color}${i === cur ? "ff" : "88"}`, outline: i === cur ? `2px solid ${color.accent}` : undefined, outlineOffset: 1 }}
-                  title={`${shortDate(f.date)}: highest tier ${t}`}
-                  aria-label={`Frame ${shortDate(f.date)}`}
-                />
-              );
-            })}
-          </div>
-          {onsetIdx > 0 && (
-            <div className="pointer-events-none absolute -top-1 bottom-0 border-l border-dashed border-line/60" style={{ left: `${(onsetIdx / frames.length) * 100}%` }}>
-              <span className="absolute -top-3.5 left-1 whitespace-nowrap text-[9.5px] text-ink-3">scenario onset</span>
-            </div>
-          )}
+        <motion.button
+          whileTap={{ scale: 0.94 }}
+          onClick={onPlay}
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-sidebar text-cream shadow-[0_8px_18px_-10px_rgba(15,63,67,0.8)] outline-none transition-colors duration-150 hover:bg-[#0B3236] focus-visible:ring-2 focus-visible:ring-accent"
+          aria-label={playing ? "Pause replay" : "Play replay"}
+          title={playing ? "Pause replay" : `Replay ${frames.length} days`}
+        >
+          {playing ? <Pause size={17} /> : <Play size={17} className="translate-x-[1px]" />}
+        </motion.button>
+        <div className="flex flex-1 items-center justify-between gap-1" role="listbox" aria-label="Replay day">
+          {window.map(({ f, i }) => {
+            const on = i === cur;
+            const t = maxTier(f);
+            const d = new Date(`${f.date}T00:00:00Z`);
+            return (
+              <button
+                key={f.as_of}
+                role="option"
+                aria-selected={on}
+                onClick={() => onSeek(i)}
+                className="group flex flex-1 flex-col items-center gap-1 rounded-2xl py-1 outline-none focus-visible:ring-2 focus-visible:ring-accent-strong"
+                title={`${shortDate(f.date)}: highest tier ${t}`}
+              >
+                <span className="text-[10.5px] font-medium uppercase tracking-wider text-ink-3">{d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })}</span>
+                <span className={`num relative grid h-10 w-10 place-items-center rounded-full text-[14px] font-semibold transition-colors duration-150 ${on ? "text-sidebar" : "text-ink-2 group-hover:bg-white/80"}`}>
+                  {on && <motion.span layoutId="day-on" transition={{ type: "spring", stiffness: 500, damping: 36 }} className="absolute inset-0 rounded-full bg-mint shadow-[0_0_0_2px_#fff,0_6px_14px_-6px_rgba(15,63,67,0.4)]" />}
+                  <span className="relative">{d.getUTCDate()}</span>
+                </span>
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: t === "E0" ? "rgba(23,54,58,0.15)" : tierTok[t].color }} aria-hidden />
+              </button>
+            );
+          })}
         </div>
-        <div className="num w-[86px] text-right text-xs text-ink-2">{shortDate(frames[cur]?.date ?? frames[frames.length - 1].date)}</div>
+        <button onClick={() => onSeek(frames.length - 1)} disabled={isLive} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line/40 px-3 py-1.5 text-xs text-ink-2 hover:bg-white/80 disabled:opacity-40" title="Jump to live">
+          <SkipForward size={13} /> Live
+        </button>
       </div>
-      <div className="num mt-1 flex justify-between pl-[150px] pr-[98px] text-[10px] text-ink-3">
+      <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-ink/10" aria-hidden>
+        <div className="h-full rounded-full bg-accent-strong transition-[width] duration-300" style={{ width: `${progress * 100}%` }} />
+      </div>
+      <div className="num mt-1 flex justify-between text-[10px] text-ink-3">
         <span>{shortDate(frames[0].date)}</span>
+        <span>{isLive ? "live" : `day ${cur + 1} of ${frames.length}`}</span>
         <span>{shortDate(frames[frames.length - 1].date)}</span>
       </div>
     </div>
   );
 }
 
-function Kpis({ analysis, timeline }: { analysis?: AnalysisBundle; timeline?: Timeline }) {
+// ------------------------------------------------------------------ right rail: scrolling KPIs, pinned approvals + insight
+
+function RightRail({ analysis, timeline, onLab }: { analysis?: AnalysisBundle; timeline?: Timeline; onLab: () => void }) {
   const actions = useActions();
   const districts = useDistricts();
+  const { go } = useApp();
   if (!analysis)
     return (
-      <Panel title="Key indicators">
+      <Panel title="Key indicators" className="h-full">
         <LoadingBlock rows={8} />
       </Panel>
     );
@@ -245,42 +347,54 @@ function Kpis({ analysis, timeline }: { analysis?: AnalysisBundle; timeline?: Ti
   const top = [...analysis.assessments].sort((a, b) => Math.max(...b.forecast.breach_prob_beds) - Math.max(...a.forecast.breach_prob_beds))[0];
   const breach = Math.max(...top.forecast.breach_prob_beds);
   const pending = actions.data?.filter((a) => a.status === "pending").length ?? 0;
-  // Lead time: first replay frame where the primary district reached E2 vs. first frame at E3.
   const primary = analysis.primary;
   const firstAt = (t: Tier) => timeline?.frames.find((f) => TIERS.indexOf(f.districts[primary]?.tier ?? "E0") >= TIERS.indexOf(t));
   const e1 = firstAt("E1");
   const e3f = firstAt("E3");
   const ps = analysis.assessments.find((a) => a.district === primary)?.signal;
+  const peakP10 = Math.max(...top.forecast.beds.p10);
+  const peakP90 = Math.max(...top.forecast.beds.p90);
 
   const cards: { label: string; value: React.ReactNode; hint: string; ids: string[]; accent?: string }[] = [
     { label: "Intervention-grade (E3)", value: <CountUp value={e3.length} />, hint: e3.map((a) => a.name).join(", ") || "none", ids: e3.slice(0, 2).map((a) => a.gate.criteria.find((c) => c.tier === "E3")?.criterion_id ?? "").filter(Boolean), accent: e3.length ? tierTok.E3.ink : undefined },
     { label: "Simulated catchment under watch (E2+)", value: <CountUp value={popWatch / 1000} suffix="k" />, hint: `${elevated.length} of ${analysis.assessments.length} districts`, ids: elevated.slice(0, 2).map((a) => a.signal?.signal_id ?? "").filter(Boolean) },
-    { label: `Peak P(bed breach) · ${top.name}`, value: <CountUp value={breach * 100} suffix="%" />, hint: "within 14 days, Monte Carlo P10–P90", ids: [top.forecast.forecast_id], accent: breach >= 0.5 ? tierTok.E3.ink : breach >= 0.2 ? tierTok.E2.ink : undefined },
+    { label: `Peak P(bed breach) · ${top.name}`, value: <span className="num">{probLabel(breach)}</span>, hint: `14 days · P10–P90 peak ${peakP10.toFixed(0)}–${peakP90.toFixed(0)} of ${top.forecast.beds_total.toFixed(0)} beds`, ids: [top.forecast.forecast_id], accent: breach >= 0.5 ? tierTok.E3.ink : breach >= 0.2 ? tierTok.E2.ink : undefined },
     { label: "First signal → E3", value: e1 && e3f ? <CountUp value={e3f.as_of - e1.as_of} suffix=" d" /> : "–", hint: e1 ? `first anomaly ${shortDate(e1.date)}${ps ? ` · ${ps.sources.length} sources` : ""}` : "no escalation", ids: ps ? [ps.signal_id] : [] },
-    { label: "Actions awaiting approval", value: <CountUp value={pending} />, hint: "nothing executes without a human", ids: [], accent: pending ? tierTok.E2.ink : undefined },
   ];
   return (
-    <Panel title="Key indicators" subtitle={`As of ${shortDate(analysis.as_of_date)}`} delay={0.1}>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5 2xl:grid-cols-1">
-        {cards.map((c, i) => (
-          <motion.div key={c.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * mo.stagger }} className="rounded-xl border border-line/30 bg-white/50 p-3">
-            <div className="label-caps leading-snug">{c.label}</div>
-            <div className="mt-1.5 text-[26px] font-semibold leading-none" style={{ color: c.accent ?? color.text }}>
-              {c.value}
-            </div>
-            <div className="mt-1 truncate text-[11px] text-ink-3" title={c.hint}>
-              {c.hint}
-            </div>
-            {c.ids.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {c.ids.map((id) => (
-                  <IdChip key={id} id={id} dim />
-                ))}
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <Panel title="Key indicators" subtitle={`As of ${shortDate(analysis.as_of_date)}`} delay={0.1} className="min-h-0 flex-1" bodyClass="min-h-0 overflow-y-auto p-3">
+        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 2xl:grid-cols-1">
+          {cards.map((c, i) => (
+            <motion.div key={c.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * mo.stagger }} className="rounded-xl border border-line/30 bg-white/50 p-3">
+              <div className="label-caps leading-snug">{c.label}</div>
+              <div className="mt-1.5 text-[24px] font-semibold leading-none" style={{ color: c.accent ?? color.text }}>
+                {c.value}
               </div>
-            )}
-          </motion.div>
-        ))}
-      </div>
-    </Panel>
+              <div className="mt-1 text-[11px] leading-snug text-ink-3">{c.hint}</div>
+              {c.ids.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {c.ids.map((id) => (
+                    <IdChip key={id} id={id} dim />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </Panel>
+      {/* Pinned: always visible regardless of KPI scroll */}
+      <button onClick={() => go("actions")} className="glass flex shrink-0 items-center gap-3 p-3.5 text-left outline-none transition-shadow duration-150 hover:shadow-[0_14px_30px_-18px_rgba(15,63,67,0.6)] focus-visible:ring-2 focus-visible:ring-accent-strong">
+        <div className="min-w-0 flex-1">
+          <div className="label-caps">Actions awaiting approval</div>
+          <div className="mt-1 text-[24px] font-semibold leading-none" style={{ color: pending ? tierTok.E2.ink : color.text }}>
+            <CountUp value={pending} />
+          </div>
+          <div className="mt-1 text-[11px] text-ink-3">Nothing executes without a human</div>
+        </div>
+        <ChevronRight size={18} className="text-ink-3" />
+      </button>
+      <InsightCard onOpen={onLab} />
+    </div>
   );
 }

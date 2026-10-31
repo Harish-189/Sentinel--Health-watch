@@ -28,3 +28,14 @@ export function shortDate(iso: string): string {
 }
 
 export const titleCase = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+/** Monte Carlo probability: never a bare 0% / 100% (finite simulations can't prove certainty). */
+export function probLabel(p: number): string {
+  if (p >= 0.99) return "≥99%";
+  if (p < 0.01) return "<1%";
+  return `${Math.round(p * 100)}%`;
+}
+
+/** Confidence with its bootstrap P10–P90 interval, e.g. "98% [91–100]". */
+export const confLabel = (c: { point: number; low: number; high: number }) =>
+  `${Math.round(c.point * 100)}% [${Math.round(c.low * 100)}–${Math.round(c.high * 100)}]`;

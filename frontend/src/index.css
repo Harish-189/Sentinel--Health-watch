@@ -188,3 +188,40 @@ body {
     display: none;
   }
 }
+
+/* State Pulse: heart beat + ECG sweep. Period comes from --beat (set from the alert index). */
+@keyframes heartbeat {
+  0%,
+  40%,
+  100% {
+    transform: scale(1);
+  }
+  12% {
+    transform: scale(1.12);
+  }
+  24% {
+    transform: scale(0.97);
+  }
+}
+.heartbeat {
+  animation: heartbeat var(--beat, 1.2s) ease-in-out infinite;
+}
+@keyframes ecg-sweep {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 1;
+  }
+  70% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.35;
+  }
+}
+.ecg {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0; /* static (reduced motion): full trace visible */
+  animation: ecg-sweep var(--beat, 1.2s) linear infinite;
+}

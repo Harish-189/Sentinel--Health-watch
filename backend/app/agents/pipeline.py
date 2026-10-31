@@ -17,6 +17,7 @@ from app.agents.packet import build_packet
 from app.agents.recommender import recommend
 from app.agents.schemas import CaseFile, Recommendation, StepEvent
 from app.agents.verifier import verify, verify_recommendations
+from app.analysis.forecast import prob_label
 from app.analysis.models import TIERS, AnalysisBundle, DistrictAssessment, Signal
 from app.config import get_settings
 from app.data.districts import by_code
@@ -133,7 +134,7 @@ def run_pipeline(scenario: tuple[str, ...], seed: int, as_of: int | None = None,
                     lambda g: f"{focus} {g[focus][0].tier} (confidence {g[focus][1].point:.2f})")
     grades = box["last"]
     yield from step("Forecast", lambda: orc.forecast_step(ctx),
-                    lambda f: f"max P(bed breach) {max(f[focus].breach_prob_beds):.0%}")
+                    lambda f: f"max P(bed breach) {prob_label(max(f[focus].breach_prob_beds))}")
     bundle: AnalysisBundle = orc.assemble(ctx, signals, cfs, grades, box["last"])
     evidence = bundle.evidence
     a = bundle.assessment(focus)

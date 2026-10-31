@@ -13,6 +13,15 @@ from app.data.districts import index_of
 HISTORY_DAYS = 30
 
 
+def prob_label(p: float) -> str:
+    """Monte Carlo probabilities are never shown as a bare 0% or 100% (finite simulations can't prove certainty)."""
+    if p >= 0.99:
+        return "≥99%"
+    if p < 0.01:
+        return "<1%"
+    return f"{p:.0%}"
+
+
 def _last_finite(y: np.ndarray, upto: int) -> float:
     vals = y[: upto + 1][np.isfinite(y[: upto + 1])]
     return float(vals[-1]) if vals.size else 0.0
