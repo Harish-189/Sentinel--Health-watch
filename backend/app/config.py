@@ -18,8 +18,14 @@ class SimulationCfg(BaseModel):
     onset_day: int
     seed: int
     demo_seed: int
+    demo_scenario: list[str]
     timeline_start: int
     default_primary: str
+    scenario_targets: dict[str, list[str]]
+
+
+class GeographyCfg(BaseModel):
+    adjacency: list[tuple[str, str]]
 
 
 class PrivacyCfg(BaseModel):
@@ -107,6 +113,7 @@ class LLMCfg(BaseModel):
 
 class Settings(BaseModel):
     simulation: SimulationCfg
+    geography: GeographyCfg
     privacy: PrivacyCfg
     detection: DetectionCfg
     gate: GateCfg

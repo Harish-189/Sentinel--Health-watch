@@ -4,9 +4,9 @@ import type { Tier } from "../theme";
 export interface District {
   code: string;
   name: string;
-  population: number;
-  q: number;
-  r: number;
+  population: number; // simulated catchment population
+  lat: number;
+  lon: number;
   neighbors: string[];
 }
 
@@ -327,4 +327,7 @@ export interface SystemStatus {
   model: string;
   fast_model: string;
   kill_switch: boolean;
+  demo_scenario: string;
+  demo_seed: number;
+  default_district: string;
 }

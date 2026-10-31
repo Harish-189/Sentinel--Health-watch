@@ -13,7 +13,7 @@ def _long(values: list[float], source: str = "clinic", metric: str = "respirator
         {
             "day": range(n),
             "date": pd.date_range("2024-01-01", periods=n).strftime("%Y-%m-%d"),
-            "district": ["D1"] * n,
+            "district": ["CBE"] * n,
             "source": [source] * n,
             "metric": [metric] * n,
             "value": values,
@@ -43,7 +43,7 @@ def test_pii_columns_rejected(col: str) -> None:
 
 
 def test_allowed_columns_pass() -> None:
-    df = _long([10, 11]).assign(district_id=["D1", "D1"])
+    df = _long([10, 11]).assign(district_id=["CBE", "CBE"])
     privacy.guard_columns(df)
 
 

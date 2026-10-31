@@ -25,15 +25,15 @@ export function EvidenceDrawer() {
           exit={{ x: 380, opacity: 0 }}
           transition={{ type: "spring", stiffness: 320, damping: 34 }}
           className="glass fixed bottom-3 right-3 top-3 z-40 flex w-[360px] flex-col"
-          style={{ background: "rgba(12,19,34,0.96)" }}
+          style={{ background: "rgba(255,252,250,0.97)" }}
           aria-label="Evidence record"
         >
-          <header className="flex items-start justify-between border-b border-white/[0.06] p-4">
+          <header className="flex items-start justify-between border-b border-line/30 p-4">
             <div className="min-w-0">
               <div className="label-caps flex items-center gap-1.5">
                 <FileSearch size={12} /> Evidence record
               </div>
-              <div className="num mt-1 break-all text-sm font-semibold text-accent">{openId}</div>
+              <div className="num mt-1 break-all text-sm font-semibold text-accent-ink">{openId}</div>
             </div>
             <button onClick={() => open(null)} className="text-ink-3 hover:text-ink" aria-label="Close">
               <X size={16} />
@@ -45,12 +45,12 @@ export function EvidenceDrawer() {
             ) : (
               <>
                 <div className="flex gap-2 text-[11px]">
-                  <span className="rounded border border-white/10 px-1.5 py-0.5 text-ink-2">{item.kind}</span>
-                  {item.district && <span className="num rounded border border-white/10 px-1.5 py-0.5 text-ink-2">{item.district}</span>}
+                  <span className="rounded border border-line/30 px-1.5 py-0.5 text-ink-2">{item.kind}</span>
+                  {item.district && <span className="num rounded border border-line/30 px-1.5 py-0.5 text-ink-2">{item.district}</span>}
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-ink">{item.summary}</p>
                 <div className="label-caps mt-5">Stored fields</div>
-                <dl className="mt-2 divide-y divide-white/[0.05] rounded-lg border border-white/[0.06]">
+                <dl className="mt-2 divide-y divide-line/25 rounded-lg border border-line/30">
                   {Object.entries(item.data).map(([k, v]) => (
                     <div key={k} className="grid grid-cols-[120px_1fr] gap-2 px-3 py-1.5 text-[11.5px]">
                       <dt className="truncate text-ink-3" title={k}>
@@ -75,7 +75,7 @@ export function EvidenceDrawer() {
 const STEPS = [
   {
     title: "Welcome to Sentinel",
-    body: "A regional early-warning console. It fuses clinic visits, pharmacy sales, school absenteeism, mobility and lab data, all aggregated by district, to spot outbreaks early without flagging false alarms.",
+    body: "An early-warning console for eight Tamil Nadu districts. It fuses clinic visits, pharmacy sales, school absenteeism, mobility and lab data, all aggregated by district, to spot outbreaks early without flagging false alarms. Every number here is simulated: city names are real, the data is not.",
   },
   {
     title: "Evidence tiers, decided by code",
@@ -84,7 +84,7 @@ const STEPS = [
   },
   {
     title: "Every claim is traceable",
-    body: "Cyan chips like EV-D3-CLI-respiratory-0703 are evidence IDs. Click any chip to see the stored record. Claims without valid evidence are dropped by the Verifier.",
+    body: "Teal chips like EV-ERD-CLI-respiratory-0706 are evidence IDs. Click any chip to see the stored record. Claims without valid evidence are dropped by the Verifier.",
   },
   {
     title: "Humans decide",
@@ -102,10 +102,10 @@ export function Onboarding({ open, onClose }: { open: boolean; onClose: () => vo
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <motion.div className="glass w-full max-w-[520px] p-6" style={{ background: "rgba(12,19,34,0.97)" }} initial={{ y: 16 }} animate={{ y: 0 }}>
+        <motion.div className="fixed inset-0 z-50 grid place-items-center bg-ink/25 p-4 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.div className="glass w-full max-w-[520px] p-6" style={{ background: "rgba(255,252,250,0.97)" }} initial={{ y: 16 }} animate={{ y: 0 }}>
             <div className="flex items-center justify-between">
-              <div className="num text-[11px] text-accent">
+              <div className="num text-[11px] text-accent-ink">
                 {i + 1} / {STEPS.length}
               </div>
               <button onClick={close} className="text-xs text-ink-3 hover:text-ink">
@@ -120,7 +120,7 @@ export function Onboarding({ open, onClose }: { open: boolean; onClose: () => vo
                   <div className="mt-4 grid grid-cols-4 gap-2">
                     {TIERS.map((t) => (
                       <div key={t} className="rounded-lg border p-2" style={{ borderColor: `${tierTok[t].color}55`, background: `${tierTok[t].color}12` }}>
-                        <div className="num text-sm font-bold" style={{ color: tierTok[t].color }}>
+                        <div className="num text-sm font-bold" style={{ color: tierTok[t].ink }}>
                           {t}
                         </div>
                         <div className="mt-0.5 text-[10.5px] leading-tight text-ink-2">{tierTok[t].label}</div>
@@ -133,12 +133,12 @@ export function Onboarding({ open, onClose }: { open: boolean; onClose: () => vo
             <div className="mt-6 flex items-center justify-between">
               <div className="flex gap-1.5">
                 {STEPS.map((_, k) => (
-                  <span key={k} className="h-1.5 rounded-full transition-all" style={{ width: k === i ? 18 : 6, background: k === i ? color.accent : "rgba(255,255,255,0.15)" }} />
+                  <span key={k} className="h-1.5 rounded-full transition-all" style={{ width: k === i ? 18 : 6, background: k === i ? color.accent : "rgba(23,54,58,0.18)" }} />
                 ))}
               </div>
               <button
                 onClick={() => (i < STEPS.length - 1 ? setI(i + 1) : close())}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-black hover:brightness-110"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink hover:brightness-110"
               >
                 {i < STEPS.length - 1 ? "Next" : "Start"} <ArrowRight size={14} />
               </button>

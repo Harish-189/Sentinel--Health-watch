@@ -70,7 +70,7 @@ def _fresh() -> None:
 def _n_sources() -> int:
     from app.agents.orchestrator import run_analysis
 
-    sig = run_analysis("true_outbreak", seed=42).assessment("D3").signal
+    sig = run_analysis("true_outbreak", seed=42).assessment("ERD").signal
     assert sig is not None
     return sig.independent_sources
 
@@ -81,16 +81,16 @@ def _llm_hypotheses() -> dict[str, Any]:
         {"title": "Respiratory outbreak", "kind": "epidemic", "category": "infectious_respiratory",
          "probability": 0.8, "summary": "Multi-source rise.",
          "claims": [
-             {"text": f"{n} sources agree.", "evidence_ids": ["SG-D3-resp"],
-              "numbers": [{"evidence_id": "SG-D3-resp", "field": "independent_sources", "value": n}]},
+             {"text": f"{n} sources agree.", "evidence_ids": ["SG-ERD-resp"],
+              "numbers": [{"evidence_id": "SG-ERD-resp", "field": "independent_sources", "value": n}]},
              {"text": "A made-up lab report confirms it.", "evidence_ids": ["EV-FAKE-001"], "numbers": []},
-             {"text": "Peak z is huge.", "evidence_ids": ["SG-D3-resp"],
-              "numbers": [{"evidence_id": "SG-D3-resp", "field": "peak_z", "value": 99.0}]},
-             {"text": "This warrants E3.", "evidence_ids": ["SG-D3-resp"], "numbers": []},
+             {"text": "Peak z is huge.", "evidence_ids": ["SG-ERD-resp"],
+              "numbers": [{"evidence_id": "SG-ERD-resp", "field": "peak_z", "value": 99.0}]},
+             {"text": "This warrants E3.", "evidence_ids": ["SG-ERD-resp"], "numbers": []},
          ],
-         "supporting_ids": ["SG-D3-resp", "EV-NOPE"], "contradicting_ids": []},
+         "supporting_ids": ["SG-ERD-resp", "EV-NOPE"], "contradicting_ids": []},
         {"title": "Holiday effect", "kind": "non_epidemic", "category": "holiday", "probability": 0.1,
-         "summary": "Calendar.", "claims": [{"text": "Holiday check ruled out.", "evidence_ids": ["CF-D3-holiday"],
+         "summary": "Calendar.", "claims": [{"text": "Holiday check ruled out.", "evidence_ids": ["CF-ERD-holiday"],
                                              "numbers": []}], "supporting_ids": [], "contradicting_ids": []},
         {"title": "Reporting artifact", "kind": "non_epidemic", "category": "reporting_change", "probability": 0.1,
          "summary": "Sites.", "claims": [{"text": "Invented.", "evidence_ids": ["CF-D9-x"], "numbers": []}],
@@ -100,11 +100,11 @@ def _llm_hypotheses() -> dict[str, Any]:
 
 def _online_responses() -> list[Any]:
     return [
-        tool_msg(("lookup_evidence", {"ids": ["SG-D3-resp"]})),  # hypothesis: tool round
+        tool_msg(("lookup_evidence", {"ids": ["SG-ERD-resp"]})),  # hypothesis: tool round
         text_msg(_llm_hypotheses()),  # hypothesis: final JSON
         text_msg({"unsupported": []}),  # verifier critic (fast model)
         tool_msg(("propose_action", {"action": "draft_public_advisory", "rationale": "E3 signal",
-                                     "evidence_ids": ["SG-D3-resp"]}),
+                                     "evidence_ids": ["SG-ERD-resp"]}),
                  ("propose_action", {"action": "quarantine_households", "rationale": "x", "evidence_ids": []})),
     ]
 
@@ -113,23 +113,23 @@ def _online_responses() -> list[Any]:
 
 
 def _evidence() -> dict[str, EvidenceItem]:
-    return {"SG-D3-resp": EvidenceItem(id="SG-D3-resp", kind="signal", district="D3", summary="s",
+    return {"SG-ERD-resp": EvidenceItem(id="SG-ERD-resp", kind="signal", district="ERD", summary="s",
                                        data={"independent_sources": 5, "explained_share": 0.92})}
 
 
 @pytest.mark.parametrize("claim,ok", [
-    (Claim(text="Five sources agree.", evidence_ids=["SG-D3-resp"],
-           numbers=[NumberRef(evidence_id="SG-D3-resp", field="independent_sources", value=5)]), True),
-    (Claim(text="92% explained.", evidence_ids=["SG-D3-resp"],
-           numbers=[NumberRef(evidence_id="SG-D3-resp", field="explained_share", value=92)]), True),
+    (Claim(text="Five sources agree.", evidence_ids=["SG-ERD-resp"],
+           numbers=[NumberRef(evidence_id="SG-ERD-resp", field="independent_sources", value=5)]), True),
+    (Claim(text="92% explained.", evidence_ids=["SG-ERD-resp"],
+           numbers=[NumberRef(evidence_id="SG-ERD-resp", field="explained_share", value=92)]), True),
     (Claim(text="No citation.", evidence_ids=[]), False),
     (Claim(text="Fake.", evidence_ids=["EV-FAKE"]), False),
-    (Claim(text="Six sources.", evidence_ids=["SG-D3-resp"],
-           numbers=[NumberRef(evidence_id="SG-D3-resp", field="independent_sources", value=6)]), False),
-    (Claim(text="Unknown field.", evidence_ids=["SG-D3-resp"],
-           numbers=[NumberRef(evidence_id="SG-D3-resp", field="r0", value=2.5)]), False),
-    (Claim(text="Signal is E3.", evidence_ids=["SG-D3-resp"]), False),
-    (Claim(text="Patient X has the infection.", evidence_ids=["SG-D3-resp"]), False),
+    (Claim(text="Six sources.", evidence_ids=["SG-ERD-resp"],
+           numbers=[NumberRef(evidence_id="SG-ERD-resp", field="independent_sources", value=6)]), False),
+    (Claim(text="Unknown field.", evidence_ids=["SG-ERD-resp"],
+           numbers=[NumberRef(evidence_id="SG-ERD-resp", field="r0", value=2.5)]), False),
+    (Claim(text="Signal is E3.", evidence_ids=["SG-ERD-resp"]), False),
+    (Claim(text="Patient X has the infection.", evidence_ids=["SG-ERD-resp"]), False),
 ])
 def test_verifier_rules(claim: Claim, ok: bool) -> None:
     h = Hypothesis(title="t", kind="epidemic", category="noise", probability=1.0, summary="s", claims=[claim])
@@ -141,7 +141,7 @@ def test_hypothesis_with_no_grounded_claims_is_dropped() -> None:
     bad = Hypothesis(title="t", kind="epidemic", category="noise", probability=0.5, summary="s",
                      claims=[Claim(text="x", evidence_ids=["EV-FAKE"])])
     good = Hypothesis(title="g", kind="non_epidemic", category="noise", probability=0.5, summary="s",
-                      claims=[Claim(text="ok", evidence_ids=["SG-D3-resp"])])
+                      claims=[Claim(text="ok", evidence_ids=["SG-ERD-resp"])])
     kept, report = verify([bad, good], _evidence())
     assert [h.title for h in kept] == ["g"] and report.dropped_hypotheses == ["H1"]
     assert kept[0].probability == 1.0
@@ -151,7 +151,7 @@ def test_hypothesis_with_no_grounded_claims_is_dropped() -> None:
 
 
 def test_offline_holiday_ranks_non_epidemic_first() -> None:
-    case = run_to_casefile(("holiday_spike",), 42, district="D3", session=_offline())
+    case = run_to_casefile(("holiday_spike",), 42, district="CHN", session=_offline())
     assert case.usage.mode == "degraded"
     assert case.hypotheses[0].kind == "non_epidemic" and case.hypotheses[0].category == "holiday"
     assert case.verification.groundedness == 1.0
@@ -159,7 +159,7 @@ def test_offline_holiday_ranks_non_epidemic_first() -> None:
 
 def test_offline_outbreak_keeps_alternatives() -> None:
     case = run_to_casefile(("true_outbreak",), 42, session=_offline())
-    assert case.district == "D3"
+    assert case.district == "ERD"
     assert case.hypotheses[0].kind == "epidemic"
     assert any(h.kind == "non_epidemic" for h in case.hypotheses)
     assert case.verification.groundedness == 1.0
@@ -167,7 +167,7 @@ def test_offline_outbreak_keeps_alternatives() -> None:
 
 
 def test_offline_recommendations_respect_tier() -> None:
-    case = run_to_casefile(("lab_backlog",), 42, district="D3", session=_offline())
+    case = run_to_casefile(("lab_backlog",), 42, district="ERD", session=_offline())
     assert case.assessment.gate.tier == "E1"
     assert {r.min_tier for r in case.recommendations} <= {"E1"}
     assert "request_data_validation" in {r.action for r in case.recommendations}

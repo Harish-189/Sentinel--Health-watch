@@ -16,8 +16,8 @@ def _max_tier(scenario: str | tuple[str, ...], seed: int) -> str:
 @pytest.mark.parametrize("seed", SEEDS)
 def test_true_outbreak_reaches_e3_in_primary(seed: int) -> None:
     bundle = run_analysis("true_outbreak", seed=seed)
-    assert bundle.assessment("D3").gate.tier == "E3"
-    assert bundle.primary == "D3" or bundle.assessment(bundle.primary).gate.tier == "E3"
+    assert bundle.assessment("ERD").gate.tier == "E3"
+    assert bundle.primary == "ERD" or bundle.assessment(bundle.primary).gate.tier == "E3"
 
 
 @pytest.mark.parametrize("seed", SEEDS)
@@ -36,7 +36,7 @@ def test_noise_only_stays_quiet(seed: int) -> None:
 @pytest.mark.parametrize("seed", SEEDS)
 def test_contradicting_lab_downgrades_outbreak(seed: int) -> None:
     bundle = run_analysis(("true_outbreak", "contradicting_lab"), seed=seed)
-    gate = bundle.assessment("D3").gate
+    gate = bundle.assessment("ERD").gate
     assert gate.tier != "E3"
     assert gate.downgrades or not next(c for c in gate.criteria if c.key == "e3_lab").met
 
@@ -49,28 +49,28 @@ def test_holiday_is_named_as_downgrade() -> None:
 
 
 def test_gate_is_deterministic() -> None:
-    a = run_analysis("true_outbreak", seed=3).assessment("D3").gate
+    a = run_analysis("true_outbreak", seed=3).assessment("ERD").gate
     run_analysis.cache_clear()
-    b = run_analysis("true_outbreak", seed=3).assessment("D3").gate
+    b = run_analysis("true_outbreak", seed=3).assessment("ERD").gate
     assert a == b
 
 
 def test_every_criterion_has_threshold_and_evidence() -> None:
-    gate = run_analysis("true_outbreak", seed=42).assessment("D3").gate
+    gate = run_analysis("true_outbreak", seed=42).assessment("ERD").gate
     keys = {c.key for c in gate.criteria}
     assert {"e1_anomaly", "e2_sources", "e2_quality", "e3_lab", "e3_spatial", "e3_persistence",
             "e3_confounders"} <= keys
     for c in gate.criteria:
-        assert c.criterion_id.startswith("GT-D3-")
+        assert c.criterion_id.startswith("GT-ERD-")
         assert c.threshold is not None
     assert all(c.evidence_ids for c in gate.criteria if c.met)
 
 
 def test_confidence_interval_brackets_point() -> None:
-    conf = run_analysis("true_outbreak", seed=42).assessment("D3").confidence
+    conf = run_analysis("true_outbreak", seed=42).assessment("ERD").confidence
     assert conf.low <= conf.point <= conf.high
     assert 0 <= conf.low and conf.high <= 1
-    quiet = run_analysis("noise_only", seed=42).assessment("D3").confidence
+    quiet = run_analysis("noise_only", seed=42).assessment("ERD").confidence
     assert conf.point > quiet.point
 
 

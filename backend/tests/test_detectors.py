@@ -56,7 +56,7 @@ def test_consecutive_runs_requires_min_length_and_merges_gaps() -> None:
 
 def test_true_outbreak_detected_in_primary_across_sources(outbreak: tuple[DetectionReport, int]) -> None:
     report, onset = outbreak
-    d3 = [a for a in report.anomalies if a.district == "D3"]
+    d3 = [a for a in report.anomalies if a.district == "ERD"]
     sources = {a.source for a in d3}
     assert {"clinic", "pharmacy", "absenteeism", "lab"} <= sources
     first = {s: min(a.start_day for a in d3 if a.source == s) for s in sources}
@@ -65,14 +65,14 @@ def test_true_outbreak_detected_in_primary_across_sources(outbreak: tuple[Detect
 
 def test_true_outbreak_lead_lag_order(outbreak: tuple[DetectionReport, int]) -> None:
     report, _ = outbreak
-    d3 = [a for a in report.anomalies if a.district == "D3"]
+    d3 = [a for a in report.anomalies if a.district == "ERD"]
     first = {s: min(a.start_day for a in d3 if a.source == s) for s in {a.source for a in d3}}
     assert min(first["pharmacy"], first["absenteeism"]) <= first["clinic"] <= first["lab"] + 2
 
 
 def test_true_outbreak_reaches_neighbor(outbreak: tuple[DetectionReport, int]) -> None:
     report, _ = outbreak
-    assert {a.district for a in report.anomalies} & {"D1", "D2"}
+    assert {a.district for a in report.anomalies} & {"CBE", "SLM"}
 
 
 def test_noise_only_few_false_alarms(noise: tuple[DetectionReport, int]) -> None:
@@ -103,7 +103,7 @@ def test_evidence_ids_are_unique_and_deterministic(outbreak: tuple[DetectionRepo
 
 def test_series_carry_expected_band(outbreak: tuple[DetectionReport, int]) -> None:
     report, _ = outbreak
-    s = report.series_for("D3", "clinic", "respiratory")
+    s = report.series_for("ERD", "clinic", "respiratory")
     assert len(s.days) == len(s.expected) == len(s.lower) == len(s.upper) == len(s.z)
     assert all(lo <= ex <= up for lo, ex, up in zip(s.lower, s.expected, s.upper, strict=True))
 
@@ -114,4 +114,4 @@ def test_detection_is_causal() -> None:
     df = apply_privacy(sim.df)
     early = detect_all(df, holidays=sim.holidays, as_of=705)
     assert all(a.end_day <= 705 for a in early.anomalies)
-    assert max(early.series_for("D3", "clinic", "respiratory").days) == 705
+    assert max(early.series_for("ERD", "clinic", "respiratory").days) == 705

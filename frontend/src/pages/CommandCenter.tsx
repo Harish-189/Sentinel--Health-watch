@@ -65,7 +65,7 @@ export default function CommandCenter() {
                 <Radio size={10} className="blink" /> LIVE
               </span>
             ) : (
-              <span className="num rounded-full border border-accent/40 px-2 py-[1px] text-[10px] font-semibold text-accent">REPLAY</span>
+              <span className="num rounded-full border border-accent/40 px-2 py-[1px] text-[10px] font-semibold text-accent-ink">REPLAY</span>
             )}
           </span>
         }
@@ -83,7 +83,8 @@ export default function CommandCenter() {
               setDistrict(d);
               go("investigation", d);
             }}
-            height={560}
+            height={620}
+            scanning={playing || analysis.isFetching}
           />
         ) : (
           <div className="p-4">
@@ -138,7 +139,7 @@ function ActiveSignals({ frames, names, loading, analysis, onOpen }: { frames: R
             const a = analysis?.assessments.find((x) => x.district === code);
             return (
               <motion.li key={code} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * mo.stagger, ease: mo.ease }}>
-                <button onClick={() => onOpen(code)} className="group w-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 text-left transition-colors hover:border-accent/30 hover:bg-white/[0.04]" style={{ borderLeft: `3px solid ${tierTok[f.tier].color}` }}>
+                <button onClick={() => onOpen(code)} className="group w-full rounded-xl border border-line/30 bg-white/50 p-3 text-left transition-colors hover:border-accent/30 hover:bg-white/80" style={{ borderLeft: `3px solid ${tierTok[f.tier].color}` }}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <div className="truncate text-[13px] font-semibold text-ink">{names[code] ?? code}</div>
@@ -149,7 +150,7 @@ function ActiveSignals({ frames, names, loading, analysis, onOpen }: { frames: R
                     <TierChip tier={f.tier} size="sm" />
                   </div>
                   <div className="mt-2 flex items-center gap-2">
-                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-ink/10">
                       <motion.div className="h-full rounded-full" style={{ background: tierTok[f.tier].color }} initial={{ width: 0 }} animate={{ width: pct(f.confidence) }} transition={{ duration: 0.6, ease: mo.ease }} />
                     </div>
                     <span className="num w-9 text-right text-[11px] text-ink-2">{pct(f.confidence)}</span>
@@ -161,7 +162,7 @@ function ActiveSignals({ frames, names, loading, analysis, onOpen }: { frames: R
                           <span key={s} title={s} className="h-1.5 w-4 rounded-full" style={{ background: srcColor[s] ?? color.textMuted }} />
                         ))}
                       </div>
-                      <span className="flex items-center gap-1 text-[10.5px] text-ink-3 group-hover:text-accent">
+                      <span className="flex items-center gap-1 text-[10.5px] text-ink-3 group-hover:text-accent-ink">
                         Investigate <ChevronRight size={12} />
                       </span>
                     </div>
@@ -180,7 +181,7 @@ function Scrubber({ timeline, loading, error, cur, isLive, playing, onPlay, onSe
   if (error) return <div className="px-3 pb-2 text-xs text-e3">Replay unavailable: {(error as Error).message}</div>;
   if (loading || !timeline)
     return (
-      <div className="flex items-center gap-3 border-t border-white/[0.06] px-3 py-3 text-xs text-ink-3">
+      <div className="flex items-center gap-3 border-t border-line/30 px-3 py-3 text-xs text-ink-3">
         <span className="blink h-1.5 w-1.5 rounded-full bg-accent" /> Building replay frames (causal re-analysis per day)…
       </div>
     );
@@ -188,9 +189,9 @@ function Scrubber({ timeline, loading, error, cur, isLive, playing, onPlay, onSe
   const maxTier = (f: (typeof frames)[number]): Tier => TIERS[Math.max(0, ...Object.values(f.districts).map((d) => TIERS.indexOf(d.tier)))];
   const onsetIdx = frames.findIndex((f) => f.as_of >= timeline.onset_day);
   return (
-    <div className="border-t border-white/[0.06] px-3 pb-2 pt-3">
+    <div className="border-t border-line/30 px-3 pb-2 pt-5">
       <div className="flex items-center gap-3">
-        <button onClick={onPlay} className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent/20" aria-label={playing ? "Pause replay" : "Play replay"}>
+        <button onClick={onPlay} className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent-ink hover:bg-accent/20" aria-label={playing ? "Pause replay" : "Play replay"}>
           {playing ? <Pause size={13} /> : <Play size={13} />} {playing ? "Pause" : "Replay"}
         </button>
         <button onClick={() => onSeek(frames.length - 1)} disabled={isLive} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-ink-3 hover:text-ink disabled:opacity-40" title="Jump to live">
@@ -205,7 +206,7 @@ function Scrubber({ timeline, loading, error, cur, isLive, playing, onPlay, onSe
                   key={f.as_of}
                   onClick={() => onSeek(i)}
                   className="relative flex-1 rounded-[3px] transition-all"
-                  style={{ background: t === "E0" ? "rgba(255,255,255,0.05)" : `${tierTok[t].color}${i === cur ? "ff" : "88"}`, outline: i === cur ? `2px solid ${color.accent}` : undefined, outlineOffset: 1 }}
+                  style={{ background: t === "E0" ? "rgba(23,54,58,0.1)" : `${tierTok[t].color}${i === cur ? "ff" : "88"}`, outline: i === cur ? `2px solid ${color.accent}` : undefined, outlineOffset: 1 }}
                   title={`${shortDate(f.date)}: highest tier ${t}`}
                   aria-label={`Frame ${shortDate(f.date)}`}
                 />
@@ -213,7 +214,7 @@ function Scrubber({ timeline, loading, error, cur, isLive, playing, onPlay, onSe
             })}
           </div>
           {onsetIdx > 0 && (
-            <div className="pointer-events-none absolute -top-1 bottom-0 border-l border-dashed border-white/30" style={{ left: `${(onsetIdx / frames.length) * 100}%` }}>
+            <div className="pointer-events-none absolute -top-1 bottom-0 border-l border-dashed border-line/60" style={{ left: `${(onsetIdx / frames.length) * 100}%` }}>
               <span className="absolute -top-3.5 left-1 whitespace-nowrap text-[9.5px] text-ink-3">scenario onset</span>
             </div>
           )}
@@ -252,17 +253,17 @@ function Kpis({ analysis, timeline }: { analysis?: AnalysisBundle; timeline?: Ti
   const ps = analysis.assessments.find((a) => a.district === primary)?.signal;
 
   const cards: { label: string; value: React.ReactNode; hint: string; ids: string[]; accent?: string }[] = [
-    { label: "Intervention-grade (E3)", value: <CountUp value={e3.length} />, hint: e3.map((a) => a.name).join(", ") || "none", ids: e3.slice(0, 2).map((a) => a.gate.criteria.find((c) => c.tier === "E3")?.criterion_id ?? "").filter(Boolean), accent: e3.length ? tierTok.E3.color : undefined },
-    { label: "Population under watch (E2+)", value: <CountUp value={popWatch / 1000} suffix="k" />, hint: `${elevated.length} of ${analysis.assessments.length} districts`, ids: elevated.slice(0, 2).map((a) => a.signal?.signal_id ?? "").filter(Boolean) },
-    { label: `Peak P(bed breach) · ${top.name}`, value: <CountUp value={breach * 100} suffix="%" />, hint: "within 14 days, Monte Carlo P10–P90", ids: [top.forecast.forecast_id], accent: breach >= 0.5 ? tierTok.E3.color : breach >= 0.2 ? tierTok.E2.color : undefined },
+    { label: "Intervention-grade (E3)", value: <CountUp value={e3.length} />, hint: e3.map((a) => a.name).join(", ") || "none", ids: e3.slice(0, 2).map((a) => a.gate.criteria.find((c) => c.tier === "E3")?.criterion_id ?? "").filter(Boolean), accent: e3.length ? tierTok.E3.ink : undefined },
+    { label: "Simulated catchment under watch (E2+)", value: <CountUp value={popWatch / 1000} suffix="k" />, hint: `${elevated.length} of ${analysis.assessments.length} districts`, ids: elevated.slice(0, 2).map((a) => a.signal?.signal_id ?? "").filter(Boolean) },
+    { label: `Peak P(bed breach) · ${top.name}`, value: <CountUp value={breach * 100} suffix="%" />, hint: "within 14 days, Monte Carlo P10–P90", ids: [top.forecast.forecast_id], accent: breach >= 0.5 ? tierTok.E3.ink : breach >= 0.2 ? tierTok.E2.ink : undefined },
     { label: "First signal → E3", value: e1 && e3f ? <CountUp value={e3f.as_of - e1.as_of} suffix=" d" /> : "–", hint: e1 ? `first anomaly ${shortDate(e1.date)}${ps ? ` · ${ps.sources.length} sources` : ""}` : "no escalation", ids: ps ? [ps.signal_id] : [] },
-    { label: "Actions awaiting approval", value: <CountUp value={pending} />, hint: "nothing executes without a human", ids: [], accent: pending ? tierTok.E2.color : undefined },
+    { label: "Actions awaiting approval", value: <CountUp value={pending} />, hint: "nothing executes without a human", ids: [], accent: pending ? tierTok.E2.ink : undefined },
   ];
   return (
     <Panel title="Key indicators" subtitle={`As of ${shortDate(analysis.as_of_date)}`} delay={0.1}>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5 2xl:grid-cols-1">
         {cards.map((c, i) => (
-          <motion.div key={c.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * mo.stagger }} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+          <motion.div key={c.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * mo.stagger }} className="rounded-xl border border-line/30 bg-white/50 p-3">
             <div className="label-caps leading-snug">{c.label}</div>
             <div className="mt-1.5 text-[26px] font-semibold leading-none" style={{ color: c.accent ?? color.text }}>
               {c.value}

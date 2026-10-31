@@ -15,7 +15,7 @@ def gov() -> Governance:
 
 
 def _propose(gov: Governance, action: str = "request_lab_sampling", tier: str = "E2") -> str:
-    p = gov.propose(action, district="D3", signal_tier=tier, rationale="test", evidence_ids=["EV-x"],
+    p = gov.propose(action, district="ERD", signal_tier=tier, rationale="test", evidence_ids=["EV-x"],
                     params={"panel": "panel_A"}, proposed_by="recommender")
     return p.ref
 
@@ -60,7 +60,7 @@ def test_edit_then_approve(gov: Governance) -> None:
 
 def test_person_level_params_rejected(gov: Governance) -> None:
     with pytest.raises(GovernanceError):
-        gov.propose("increase_monitoring", district="D3", signal_tier="E1", rationale="x", evidence_ids=[],
+        gov.propose("increase_monitoring", district="ERD", signal_tier="E1", rationale="x", evidence_ids=[],
                     params={"patient_name": "x"}, proposed_by="recommender")
 
 

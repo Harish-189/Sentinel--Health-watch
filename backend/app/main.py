@@ -31,12 +31,14 @@ from app.governance.audit import AuditEntry
 from app.governance.store import default_gov_engine
 
 DEMO_SEED = get_settings().simulation.demo_seed
+PRIMARY = get_settings().simulation.default_primary
+DEMO_SCENARIO = "+".join(get_settings().simulation.demo_scenario)
 GOV = Governance(default_gov_engine())
 
 
 def _warm() -> None:
     """Precompute the default demo so the first page load is instant."""
-    scenario = ("true_outbreak",)
+    scenario = _scenario(DEMO_SCENARIO)
     run_analysis(scenario, seed=DEMO_SEED)
     _detection(scenario, DEMO_SEED, None)
     run_to_casefile(scenario, DEMO_SEED)
@@ -76,7 +78,7 @@ def health() -> dict[str, Any]:
 @app.get("/api/districts")
 def districts() -> list[dict[str, object]]:
     return [
-        {"code": d.code, "name": d.name, "population": d.population, "q": d.q, "r": d.r,
+        {"code": d.code, "name": d.name, "population": d.population, "lat": d.lat, "lon": d.lon,
          "neighbors": sorted(neighbors(d.code))}
         for d in DISTRICTS
     ]
@@ -92,7 +94,7 @@ def scenarios() -> list[dict[str, object]]:
 
 
 @app.get("/api/detect")
-def detect(scenario: str = "true_outbreak", seed: int = DEMO_SEED, as_of: int | None = None) -> DetectionReport:
+def detect(scenario: str = DEMO_SCENARIO, seed: int = DEMO_SEED, as_of: int | None = None) -> DetectionReport:
     return _detection(_scenario(scenario), seed, as_of)
 
 
@@ -105,7 +107,7 @@ class SeriesResponse(BaseModel):
 
 
 @app.get("/api/series")
-def series(district: str = "D3", scenario: str = "true_outbreak", seed: int = DEMO_SEED,
+def series(district: str = PRIMARY, scenario: str = DEMO_SCENARIO, seed: int = DEMO_SEED,
            as_of: int | None = None) -> SeriesResponse:
     rep = _detection(_scenario(scenario), seed, as_of)
     return SeriesResponse(district=district, as_of=rep.as_of, as_of_date=rep.as_of_date,
@@ -114,17 +116,17 @@ def series(district: str = "D3", scenario: str = "true_outbreak", seed: int = DE
 
 
 @app.get("/api/timeline")
-def timeline(scenario: str = "true_outbreak", seed: int = DEMO_SEED) -> Timeline:
+def timeline(scenario: str = DEMO_SCENARIO, seed: int = DEMO_SEED) -> Timeline:
     return build_timeline(_scenario(scenario), seed)
 
 
 @app.get("/api/analysis")
-def analysis(scenario: str = "true_outbreak", seed: int = DEMO_SEED, as_of: int | None = None) -> AnalysisBundle:
+def analysis(scenario: str = DEMO_SCENARIO, seed: int = DEMO_SEED, as_of: int | None = None) -> AnalysisBundle:
     return run_analysis(_scenario(scenario), seed=seed, as_of=as_of)
 
 
 @app.get("/api/forecast")
-def forecast(district: str = "D3", scenario: str = "true_outbreak", seed: int = DEMO_SEED, as_of: int | None = None,
+def forecast(district: str = PRIMARY, scenario: str = DEMO_SCENARIO, seed: int = DEMO_SEED, as_of: int | None = None,
              intervention: bool = False) -> Forecast:
     bundle = run_analysis(_scenario(scenario), seed=seed, as_of=as_of)
     if not intervention:
@@ -137,17 +139,18 @@ def system() -> dict[str, Any]:
     mode, reason = resolve_mode()
     model, fast = models()
     return {"llm_mode": mode, "degraded_reason": reason, "model": model, "fast_model": fast,
-            "kill_switch": GOV.kill_switch_engaged()}
+            "kill_switch": GOV.kill_switch_engaged(), "demo_scenario": DEMO_SCENARIO, "demo_seed": DEMO_SEED,
+            "default_district": PRIMARY}
 
 
 @app.get("/api/casefile")
-def casefile(scenario: str = "true_outbreak", seed: int = DEMO_SEED, as_of: int | None = None,
+def casefile(scenario: str = DEMO_SCENARIO, seed: int = DEMO_SEED, as_of: int | None = None,
              district: str | None = None) -> CaseFile:
     return run_to_casefile(_scenario(scenario), seed, as_of, district, gov=GOV)
 
 
 @app.get("/api/analyze/stream")
-def analyze_stream(scenario: str = "true_outbreak", seed: int = DEMO_SEED, as_of: int | None = None,
+def analyze_stream(scenario: str = DEMO_SCENARIO, seed: int = DEMO_SEED, as_of: int | None = None,
                    district: str | None = None, pace_ms: float = 350.0) -> StreamingResponse:
     names = _scenario(scenario)
 
@@ -172,7 +175,7 @@ def catalog() -> list[dict[str, str]]:
 class ProposeBody(BaseModel):
     action: str
     district: str
-    scenario: str = "true_outbreak"
+    scenario: str = DEMO_SCENARIO
     seed: int = DEMO_SEED
     as_of: int | None = None
     rationale: str = ""

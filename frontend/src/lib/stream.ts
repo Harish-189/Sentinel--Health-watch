@@ -14,7 +14,7 @@ export interface StreamState {
 }
 
 /** Runs the agent pipeline over SSE: step events animate the stepper, the final event is the case file. */
-export function useAnalyzeStream(params: { scenario: string; seed: number; district: string }) {
+export function useAnalyzeStream(params: { scenario?: string; seed?: number; district: string }) {
   const qc = useQueryClient();
   const { register } = useEvidence();
   const [state, setState] = useState<StreamState>({ steps: {}, casefile: null, running: false, error: null });

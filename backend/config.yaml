@@ -5,9 +5,27 @@ simulation:
   start_date: "2023-11-01"
   onset_day: 700          # scenario events start here; "now" = last day (729)
   seed: 42
-  demo_seed: 7            # default seed for the UI/API demo (clear E1->E3 build-up and a projected bed breach)
+  demo_seed: 8            # default seed for the UI/API demo (clear E1->E3 build-up, breach risk only in the cluster)
+  demo_scenario: [true_outbreak, holiday_spike, reporting_change]  # outbreak in the west + two decoys
   timeline_start: 694     # first as_of frame of the Command Center replay
-  default_primary: D3     # Amberfield (center tile, 6 neighbors)
+  default_primary: ERD    # Erode: centre of the western cluster
+  # Default target districts per scenario overlay (used unless simulate() is given an explicit primary).
+  scenario_targets:
+    true_outbreak: [ERD, CBE, SLM]   # western cluster: Erode (primary), Coimbatore, Salem
+    holiday_spike: [CHN]             # decoy: festival surge in Chennai
+    reporting_change: [MDU]          # decoy: new reporting network in Madurai
+
+# District adjacency (undirected). Drives spatial coherence and the map's coherence links.
+geography:
+  adjacency:
+    - [CHN, VLR]
+    - [VLR, SLM]
+    - [SLM, ERD]
+    - [ERD, CBE]
+    - [SLM, TRY]
+    - [ERD, TRY]
+    - [TRY, MDU]
+    - [MDU, TNV]
 
 privacy:
   k_min: 5                # small-cell suppression threshold (counts below -> null + flag)

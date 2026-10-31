@@ -67,7 +67,7 @@ function ActionCard({ a, i, killed }: { a: PendingAction; i: number; killed: boo
   const statusColor = a.status === "executed" ? color.good : a.status === "rejected" ? color.critical : color.warning;
 
   return (
-    <motion.li layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 30 }} transition={{ delay: Math.min(i, 6) * mo.stagger * 0.5 }} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5">
+    <motion.li layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 30 }} transition={{ delay: Math.min(i, 6) * mo.stagger * 0.5 }} className="rounded-xl border border-line/30 bg-white/50 p-3.5">
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -82,7 +82,7 @@ function ActionCard({ a, i, killed }: { a: PendingAction; i: number; killed: boo
           {Object.keys(a.params).length > 0 && (
             <div className="num mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
               {Object.entries(a.params).map(([k, v]) => (
-                <span key={k} className="rounded border border-white/10 px-1.5 py-0.5 text-ink-2">
+                <span key={k} className="rounded border border-line/30 px-1.5 py-0.5 text-ink-2">
                   {k}: <span className="text-ink">{String(v)}</span>
                 </span>
               ))}
@@ -96,10 +96,10 @@ function ActionCard({ a, i, killed }: { a: PendingAction; i: number; killed: boo
         </div>
         {a.status === "pending" && (
           <div className="flex shrink-0 flex-col gap-1.5">
-            <button disabled={killed || approve.isPending} onClick={() => approve.mutate()} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-good px-3 py-1.5 text-xs font-semibold text-black hover:brightness-110 disabled:opacity-40">
+            <button disabled={killed || approve.isPending} onClick={() => approve.mutate()} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-good px-3 py-1.5 text-xs font-semibold text-ink hover:brightness-110 disabled:opacity-40">
               <Check size={13} /> Approve
             </button>
-            <button onClick={() => setMode("edit")} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs text-ink-2 hover:border-accent/50 hover:text-accent">
+            <button onClick={() => setMode("edit")} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-line/50 px-3 py-1.5 text-xs text-ink-2 hover:border-accent/50 hover:text-accent-ink">
               <Pencil size={12} /> Edit
             </button>
             <button onClick={() => setMode("reject")} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-e3/40 px-3 py-1.5 text-xs text-e3 hover:bg-e3/10">
@@ -156,7 +156,7 @@ function RejectDialog({ a, open, onClose, onDone }: { a: PendingAction; open: bo
   return (
     <Modal open={open} onClose={onClose} title={`Reject: ${a.title}`}>
       <p className="text-sm text-ink-2">A reason is required and is written to the audit log.</p>
-      <textarea autoFocus value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="e.g. Lab confirmation pending; revisit in 48h" className="mt-3 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-ink outline-none focus:border-accent/60" />
+      <textarea autoFocus value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder="e.g. Lab confirmation pending; revisit in 48h" className="mt-3 w-full rounded-lg border border-line/30 bg-white/85 px-3 py-2 text-sm text-ink outline-none focus:border-accent/60" />
       {m.error && <div className="mt-2 text-xs text-e3">{(m.error as Error).message}</div>}
       <div className="mt-4 flex justify-end gap-2">
         <button onClick={onClose} className="rounded-lg px-3 py-2 text-sm text-ink-3 hover:text-ink">
@@ -188,7 +188,7 @@ function EditDialog({ a, open, onClose, onDone }: { a: PendingAction; open: bool
   return (
     <Modal open={open} onClose={onClose} title={`Edit: ${a.title}`} width={520}>
       <label className="label-caps">Rationale</label>
-      <textarea value={rationale} onChange={(e) => setRationale(e.target.value)} rows={3} className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-ink outline-none focus:border-accent/60" />
+      <textarea value={rationale} onChange={(e) => setRationale(e.target.value)} rows={3} className="mt-1.5 w-full rounded-lg border border-line/30 bg-white/85 px-3 py-2 text-sm text-ink outline-none focus:border-accent/60" />
       {Object.keys(params).length > 0 && (
         <>
           <label className="label-caps mt-3 block">Parameters</label>
@@ -196,7 +196,7 @@ function EditDialog({ a, open, onClose, onDone }: { a: PendingAction; open: bool
             {Object.entries(params).map(([k, v]) => (
               <label key={k} className="text-[11px] text-ink-3">
                 {k}
-                <input value={v} onChange={(e) => setParams({ ...params, [k]: e.target.value })} className="num mt-1 w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent/60" />
+                <input value={v} onChange={(e) => setParams({ ...params, [k]: e.target.value })} className="num mt-1 w-full rounded-lg border border-line/30 bg-white/85 px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent/60" />
               </label>
             ))}
           </div>
@@ -208,7 +208,7 @@ function EditDialog({ a, open, onClose, onDone }: { a: PendingAction; open: bool
         <button onClick={onClose} className="rounded-lg px-3 py-2 text-sm text-ink-3 hover:text-ink">
           Cancel
         </button>
-        <button disabled={m.isPending} onClick={() => m.mutate()} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-black disabled:opacity-40">
+        <button disabled={m.isPending} onClick={() => m.mutate()} className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-ink disabled:opacity-40">
           Save edit
         </button>
       </div>
@@ -216,7 +216,7 @@ function EditDialog({ a, open, onClose, onDone }: { a: PendingAction; open: bool
   );
 }
 
-const EVENT_COLOR: Record<string, string> = { proposed: color.accent, approved: color.good, executed: color.good, rejected: color.critical, edited: color.warning, kill_switch: color.critical, demo_reset: color.accent };
+const EVENT_COLOR: Record<string, string> = { proposed: color.accentInk, approved: color.good, executed: color.good, rejected: color.critical, edited: color.warning, kill_switch: color.critical, demo_reset: color.textSecondary };
 
 function AuditPanel() {
   const audit = useAudit();
@@ -245,7 +245,7 @@ function AuditPanel() {
           ) : (
             <div className="max-h-[70vh] overflow-auto">
               <table className="w-full text-left text-[11.5px]">
-                <thead className="sticky top-0 bg-[#0c1322]">
+                <thead className="sticky top-0 bg-[#FFF8F4]">
                   <tr className="label-caps">
                     <th className="px-3 py-2 font-semibold">#</th>
                     <th className="px-2 py-2 font-semibold">Time (UTC)</th>
@@ -257,7 +257,7 @@ function AuditPanel() {
                 </thead>
                 <tbody>
                   {[...d.entries].reverse().map((e) => (
-                    <tr key={e.seq} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
+                    <tr key={e.seq} className="border-t border-line/20 hover:bg-white/50">
                       <td className="num px-3 py-1.5 text-ink-3">{e.seq}</td>
                       <td className="num whitespace-nowrap px-2 py-1.5 text-ink-3">{e.ts.slice(11, 19)}</td>
                       <td className="px-2 py-1.5">

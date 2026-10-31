@@ -39,13 +39,13 @@ export const axis = {
 
 export const tooltip = {
   trigger: "axis" as const,
-  backgroundColor: "rgba(10,16,30,0.94)",
+  backgroundColor: "rgba(255,252,250,0.97)",
   borderColor: color.borderStrong,
   borderWidth: 1,
   padding: [8, 10],
   textStyle: { color: color.text, fontFamily: font.sans, fontSize: 12 },
-  axisPointer: { type: "line" as const, lineStyle: { color: "rgba(34,211,238,0.5)", width: 1 } },
-  extraCssText: "border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.5);backdrop-filter:blur(8px);",
+  axisPointer: { type: "line" as const, lineStyle: { color: "rgba(46,158,163,0.5)", width: 1 } },
+  extraCssText: "border-radius:10px;box-shadow:0 10px 30px rgba(15,63,67,.18);backdrop-filter:blur(8px);",
 };
 
 export function EChart({ option, height = 220, onReady }: { option: Option; height?: number | string; onReady?: (c: echarts.ECharts) => void }) {

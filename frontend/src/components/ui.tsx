@@ -29,7 +29,7 @@ export function Panel({
       className={`glass flex min-w-0 flex-col ${className}`}
     >
       {(title || right) && (
-        <header className="flex items-start justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
+        <header className="flex items-start justify-between gap-3 border-b border-line/30 px-4 py-3">
           <div className="min-w-0">
             {title && <h2 className="truncate text-[13px] font-semibold tracking-wide text-ink">{title}</h2>}
             {subtitle && <p className="mt-0.5 text-[11.5px] text-ink-3">{subtitle}</p>}
@@ -44,19 +44,20 @@ export function Panel({
 
 export function TierChip({ tier, size = "md", label = false }: { tier: Tier; size?: "sm" | "md" | "lg"; label?: boolean }) {
   const t = tierTok[tier];
+  const Icon = t.icon;
   const sz = size === "lg" ? "px-3.5 py-1.5 text-base" : size === "sm" ? "px-1.5 py-0.5 text-[10.5px]" : "px-2 py-0.5 text-xs";
   return (
     <span
       className={`num inline-flex items-center gap-1.5 rounded-md border font-semibold ${sz} ${t.glow ? "pulse-glow" : ""}`}
       style={{
-        color: t.color,
-        borderColor: `${t.color}66`,
-        background: `${t.color}1a`,
-        ["--glow" as string]: `${t.color}66`,
+        color: t.ink,
+        borderColor: `${t.color}aa`,
+        background: `${t.color}2e`,
+        ["--glow" as string]: `${t.color}88`,
       }}
       title={`${tier}: ${t.label}`}
     >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: t.color }} />
+      <Icon size={size === "lg" ? 15 : size === "sm" ? 10 : 12} strokeWidth={2.4} aria-hidden />
       {tier}
       {label && <span className="font-sans font-medium opacity-90">· {t.label}</span>}
     </span>
@@ -75,10 +76,10 @@ export function IdChip({ id, dim = false }: { id: string; dim?: boolean }) {
       onMouseLeave={() => setHighlight(null)}
       className={`num inline-flex max-w-full items-center truncate rounded-md border px-1.5 py-[1px] text-[10.5px] transition-colors ${
         active
-          ? "border-accent/70 bg-accent/15 text-accent"
+          ? "border-accent/70 bg-accent/15 text-accent-ink"
           : dim
-            ? "border-white/[0.06] bg-white/[0.02] text-ink-3 hover:text-ink-2"
-            : "border-accent/25 bg-accent/[0.06] text-accent/90 hover:border-accent/60"
+            ? "border-line/30 bg-white/50 text-ink-3 hover:text-ink-2"
+            : "border-accent/25 bg-accent/[0.06] text-accent-ink/90 hover:border-accent/60"
       }`}
       title={`Evidence ${id}: click to inspect`}
     >
@@ -146,7 +147,7 @@ export function LoadingBlock({ label = "Computing", rows = 4 }: { label?: string
 export function EmptyState({ title, body, icon }: { title: string; body?: string; icon?: ReactNode }) {
   return (
     <div className="flex h-full min-h-[120px] flex-col items-center justify-center gap-2 px-6 py-8 text-center">
-      <div className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-ink-3">
+      <div className="grid h-10 w-10 place-items-center rounded-full border border-line/30 bg-white/50 text-ink-3">
         {icon ?? <Inbox size={18} />}
       </div>
       <div className="text-sm font-medium text-ink-2">{title}</div>
@@ -165,7 +166,7 @@ export function ErrorState({ error, retry }: { error: unknown; retry?: () => voi
       <div className="text-sm font-medium text-ink-2">Couldn't load this panel</div>
       <div className="num max-w-md text-[11px] text-ink-3">{msg}</div>
       {retry && (
-        <button onClick={retry} className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-1.5 text-xs text-ink-2 hover:border-accent/50 hover:text-accent">
+        <button onClick={retry} className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-line/30 px-3 py-1.5 text-xs text-ink-2 hover:border-accent/50 hover:text-accent-ink">
           <RotateCw size={12} /> Retry
         </button>
       )}
@@ -201,7 +202,7 @@ export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boo
       onClick={() => onChange(!on)}
       className="inline-flex items-center gap-2 text-xs text-ink-2"
     >
-      <span className={`relative h-5 w-9 rounded-full border transition-colors ${on ? "border-accent/60 bg-accent/25" : "border-white/15 bg-white/5"}`}>
+      <span className={`relative h-5 w-9 rounded-full border transition-colors ${on ? "border-accent/60 bg-accent/25" : "border-line/50 bg-ink/5"}`}>
         <span className={`absolute top-0.5 h-3.5 w-3.5 rounded-full transition-all ${on ? "left-[18px] bg-accent" : "left-0.5 bg-ink-3"}`} />
       </span>
       {label}
@@ -211,12 +212,12 @@ export function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boo
 
 export function Segmented<T extends string>({ value, options, onChange }: { value: T; options: { value: T; label: ReactNode }[]; onChange: (v: T) => void }) {
   return (
-    <div className="inline-flex rounded-lg border border-white/10 bg-white/[0.03] p-0.5">
+    <div className="inline-flex rounded-lg border border-line/30 bg-white/50 p-0.5">
       {options.map((o) => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`rounded-md px-2.5 py-1 text-xs transition-colors ${value === o.value ? "bg-accent/15 text-accent" : "text-ink-3 hover:text-ink-2"}`}
+          className={`rounded-md px-2.5 py-1 text-xs transition-colors ${value === o.value ? "bg-accent/15 text-accent-ink" : "text-ink-3 hover:text-ink-2"}`}
         >
           {o.label}
         </button>

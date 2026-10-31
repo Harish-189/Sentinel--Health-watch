@@ -1,35 +1,37 @@
-"""Eight fictional districts on an axial hex grid. No real place names."""
+"""Eight Tamil Nadu districts. Names and approximate coordinates are real; every number attached to them
+(catchment population, reporting sites, all surveillance data) is simulated. No census figures, no facility names."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cache
 
+from app.config import get_settings
+
 
 @dataclass(frozen=True)
 class District:
     code: str
     name: str
-    population: int
-    q: int  # axial hex coordinates (map layout and adjacency)
-    r: int
+    population: int  # simulated catchment population (not a census figure)
+    lat: float
+    lon: float
     sites: int  # reporting sites expected
     completeness: float  # long-run probability that a site reports on a given day
 
 
 DISTRICTS: tuple[District, ...] = (
-    District("D1", "Northvale", 280_000, 0, -1, 11, 0.985),
-    District("D2", "Kestrel Bay", 190_000, 1, -1, 8, 0.985),
-    District("D3", "Amberfield", 420_000, 0, 0, 17, 0.99),
-    District("D4", "Lowmoor", 260_000, 1, 0, 10, 0.985),
-    District("D5", "Cindral", 310_000, 0, 1, 12, 0.985),
-    District("D6", "Velmora", 230_000, -1, 0, 9, 0.98),
-    District("D7", "Quillan Ridge", 150_000, -1, 1, 6, 0.95),  # low-reporting district (fairness check)
-    District("D8", "Sunhollow", 200_000, 2, -1, 8, 0.97),
+    District("CHN", "Chennai", 520_000, 13.08, 80.27, 18, 0.99),
+    District("VLR", "Vellore", 220_000, 12.92, 79.13, 9, 0.985),
+    District("SLM", "Salem", 300_000, 11.66, 78.15, 12, 0.985),
+    District("ERD", "Erode", 260_000, 11.34, 77.72, 11, 0.985),
+    District("CBE", "Coimbatore", 420_000, 11.02, 76.96, 17, 0.99),
+    District("TRY", "Tiruchirappalli", 310_000, 10.79, 78.70, 12, 0.985),
+    District("MDU", "Madurai", 380_000, 9.92, 78.12, 14, 0.98),
+    District("TNV", "Tirunelveli", 160_000, 8.73, 77.70, 6, 0.95),  # low-reporting district (fairness check)
 )
 
 CODES: tuple[str, ...] = tuple(d.code for d in DISTRICTS)
-_AXIAL_DIRS = ((1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1))
 
 
 def by_code(code: str) -> District:
@@ -41,9 +43,10 @@ def by_code(code: str) -> District:
 
 @cache
 def neighbors(code: str) -> frozenset[str]:
-    d = by_code(code)
-    cells = {(d.q + dq, d.r + dr) for dq, dr in _AXIAL_DIRS}
-    return frozenset(o.code for o in DISTRICTS if (o.q, o.r) in cells)
+    """Adjacent districts, from `geography.adjacency` in config.yaml (undirected)."""
+    by_code(code)
+    pairs = get_settings().geography.adjacency
+    return frozenset({b for a, b in pairs if a == code} | {a for a, b in pairs if b == code})
 
 
 def index_of(code: str) -> int:

@@ -51,6 +51,19 @@ def cluster(primary: str, size: int = 3) -> list[str]:
     return (picked + touching + rest)[:size]
 
 
+def targets(ctx: SimContext, overlay: str) -> list[str]:
+    """Districts an overlay hits: the configured default, else derived from the primary district."""
+    if overlay in ctx.targets:
+        return ctx.targets[overlay]
+    if overlay in ("true_outbreak", "weather_driven", "contradicting_lab"):
+        return cluster(ctx.primary)
+    return [ctx.primary]
+
+
+def outbreak_cluster(ctx: SimContext) -> list[str]:
+    return targets(ctx, "true_outbreak")
+
+
 # --------------------------------------------------------------------------- overlays
 
 DriverFn = Callable[[Drivers, SimContext], list[str]]
@@ -73,7 +86,7 @@ def _t(ctx: SimContext) -> Array:
 def _true_outbreak(drv: Drivers, ctx: SimContext) -> list[str]:
     t = _t(ctx)
     amp = float(ctx.rng.uniform(0.85, 1.15))
-    members = cluster(ctx.primary)
+    members = outbreak_cluster(ctx)
     spread = list(zip(members, (1.0, 0.6, 0.5), (0, 4, 5), strict=False))
     m, a = drv.mult, drv.add
     for code, intensity, extra in spread:
@@ -117,22 +130,24 @@ def _holiday_spike(drv: Drivers, ctx: SimContext) -> list[str]:
     m, a = drv.mult, drv.add
     stock = slice(o + 3, o + 6)  # pre-festival stocking up at pharmacies
     rush = slice(o + 8, o + 11)  # post-festival clinic rush (deferred visits, minor injuries)
+    hit = ctx.targets.get("holiday_spike", list(CODES))  # default: festival celebrated region-wide
+    rows = [index_of(c) for c in hit]
     for ch in ("antipyretic", "cough_cold", "ors"):
-        m[ch][:, stock] *= 1.6
+        m[ch][rows, stock] *= 1.6
     for ch in ("resp", "gi", "other"):
-        m[ch][:, rush] *= 1.5
-    a["mobility"][:, o + 6 : o + 8] += 30.0  # crowds offset the usual holiday dip
-    a["school"][:, rush] += 1.5
-    return list(CODES)
+        m[ch][rows, rush] *= 1.5
+    a["mobility"][rows, o + 6 : o + 8] += 30.0  # crowds offset the usual holiday dip
+    a["school"][rows, rush] += 1.5
+    return hit
 
 
 def _reporting_change(drv: Drivers, ctx: SimContext) -> list[str]:
-    return [ctx.primary]
+    return targets(ctx, "reporting_change")
 
 
 def _reporting_change_post(out: Series, ctx: SimContext) -> None:
     """New sites add reported volume only; true illness (and admissions) are unchanged."""
-    i, o = index_of(ctx.primary), ctx.onset_day
+    i, o = index_of(targets(ctx, "reporting_change")[0]), ctx.onset_day
     for m in ("respiratory", "gastrointestinal", "febrile_rash", "other"):
         out[("clinic", m)][i, o:] = np.round(out[("clinic", m)][i, o:] * 1.5)
     for m in ("antipyretic", "cough_cold", "antiviral", "ors_rehydration"):
@@ -143,12 +158,12 @@ def _reporting_change_post(out: Series, ctx: SimContext) -> None:
 
 
 def _lab_backlog(drv: Drivers, ctx: SimContext) -> list[str]:
-    return [ctx.primary]
+    return targets(ctx, "lab_backlog")
 
 
 def _lab_backlog_post(out: Series, ctx: SimContext) -> None:
     """Batch reporting: ~10% of results trickle in for 4 days, then the backlog is dumped over 2 days."""
-    i, rng = index_of(ctx.primary), ctx.rng
+    i, rng = index_of(targets(ctx, "lab_backlog")[0]), ctx.rng
     cycle, trickle = 6, 4
     for panel in ("A", "B"):
         tests = out[("lab", f"panel_{panel}_tests")][i]
@@ -172,7 +187,7 @@ def _lab_backlog_post(out: Series, ctx: SimContext) -> None:
 
 def _weather_driven(drv: Drivers, ctx: SimContext) -> list[str]:
     t = _t(ctx)
-    members = cluster(ctx.primary)
+    members = targets(ctx, "weather_driven")
     w = plateau(t - ctx.onset_day)
     m, a = drv.mult, drv.add
     for code in members:
@@ -202,10 +217,10 @@ def _noise_only(drv: Drivers, ctx: SimContext) -> list[str]:
 def _contradicting_lab(drv: Drivers, ctx: SimContext) -> list[str]:
     """New lab results in the last 10 days show flat positivity (contradicts an infectious cause)."""
     start = max(ctx.days - 10, ctx.onset_day)
-    for code in cluster(ctx.primary):
+    for code in outbreak_cluster(ctx):
         drv.add["pos_A"][index_of(code), start:] = 0.0
         drv.add["pos_B"][index_of(code), start:] = 0.0
-    return [ctx.primary]
+    return outbreak_cluster(ctx)
 
 
 def _source_outage(drv: Drivers, ctx: SimContext) -> list[str]:

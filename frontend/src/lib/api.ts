@@ -54,10 +54,10 @@ export function qs(params: Record<string, string | number | boolean | null | und
   return s ? `?${s}` : "";
 }
 
-/** Scenario/seed parameters shared by every read query. */
-export function useRunParams() {
+/** Scenario/seed parameters shared by every read query; omitted = the server's demo defaults. */
+export function useRunParams(): { scenario?: string; seed?: number } {
   const { scenario, seed } = useApp();
-  return { scenario: scenario.join("+"), seed };
+  return { scenario: scenario ? scenario.join("+") : undefined, seed: seed ?? undefined };
 }
 
 const STATIC = { staleTime: Infinity, gcTime: Infinity } as const;
@@ -120,6 +120,6 @@ export const useAudit = () =>
     refetchInterval: 5_000,
   });
 
-export function streamUrl(params: { scenario: string; seed: number; district?: string }): string {
+export function streamUrl(params: { scenario?: string; seed?: number; district?: string }): string {
   return `/api/analyze/stream${qs({ ...params, pace_ms: 380 })}`;
 }

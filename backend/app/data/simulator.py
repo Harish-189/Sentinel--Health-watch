@@ -44,6 +44,7 @@ class SimContext:
     resp_peak_doy: float = 15.0  # mid-January respiratory peak
     resp_amp: float = 0.35
     notes: list[str] = field(default_factory=list)
+    targets: dict[str, list[str]] = field(default_factory=dict)  # overlay -> target districts (config defaults)
 
 
 @dataclass
@@ -236,4 +237,6 @@ def make_context(
         primary=primary or sim.default_primary,
         syndrome=syndrome,
         rng=np.random.default_rng([seed, 7919]),
+        # Configured default targets apply only when the caller did not pick a primary district.
+        targets={k: list(v) for k, v in sim.scenario_targets.items()} if primary is None else {},
     )

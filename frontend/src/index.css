@@ -1,17 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #070b14;
-  --color-surface: #0c1322;
-  --color-ink: #e6edf7;
-  --color-ink-2: #9aa8bd;
-  --color-ink-3: #64748b;
-  --color-accent: #22d3ee;
-  --color-e0: #64748b;
-  --color-e1: #3b82f6;
-  --color-e2: #f59e0b;
-  --color-e3: #ef4444;
-  --color-good: #10b981;
+  --color-bg: #fbe4da;
+  --color-surface: #ffffff;
+  --color-ink: #17363a;
+  --color-ink-2: #4f6f72;
+  --color-ink-3: #557477;
+  --color-line: #5fbdbf;
+  --color-accent: #5fbdbf;
+  --color-accent-strong: #2e9ea3;
+  --color-accent-ink: #1b7378;
+  --color-sidebar: #0f3f43;
+  --color-cream: #fbf1ea;
+  --color-mint: #baddd6;
+  --color-e0: #4a6b65;
+  --color-e1: #1b6e72;
+  --color-e2: #985510;
+  --color-e3: #b32632;
+  --color-kill: #d64550;
+  --color-good: #1f8a5b;
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
@@ -38,17 +45,18 @@ body {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(1200px 600px at 12% -10%, rgba(34, 211, 238, 0.09), transparent 60%),
-    radial-gradient(900px 600px at 100% 0%, rgba(59, 130, 246, 0.08), transparent 60%),
-    radial-gradient(800px 500px at 60% 110%, rgba(239, 68, 68, 0.05), transparent 60%);
+    radial-gradient(1100px 700px at 8% -10%, rgba(186, 221, 214, 0.85), transparent 60%),
+    radial-gradient(900px 650px at 105% 5%, rgba(255, 175, 179, 0.55), transparent 60%),
+    radial-gradient(900px 600px at 55% 115%, rgba(186, 221, 214, 0.6), transparent 60%),
+    #fbe4da;
 }
 .backdrop::before {
   content: "";
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(rgba(23, 54, 58, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 54, 58, 0.035) 1px, transparent 1px);
   background-size: 40px 40px;
   mask-image: radial-gradient(ellipse at 50% 30%, black 30%, transparent 85%);
 }
@@ -56,19 +64,19 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.05;
+  opacity: 0.035;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 .glass {
-  background: rgba(14, 21, 37, 0.62);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(95, 189, 191, 0.35);
   border-radius: 16px;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.04) inset,
-    0 20px 40px -24px rgba(0, 0, 0, 0.6);
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 18px 40px -28px rgba(15, 63, 67, 0.35);
 }
 
 .num {
@@ -88,10 +96,10 @@ body {
 @keyframes tier-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 var(--glow, rgba(239, 68, 68, 0.5));
+    box-shadow: 0 0 0 0 var(--glow, rgba(229, 83, 93, 0.45));
   }
   50% {
-    box-shadow: 0 0 18px 2px var(--glow, rgba(239, 68, 68, 0.5));
+    box-shadow: 0 0 14px 2px var(--glow, rgba(229, 83, 93, 0.45));
   }
 }
 .pulse-glow {
@@ -136,7 +144,7 @@ body {
 }
 
 .shimmer {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  background: linear-gradient(90deg, rgba(95, 189, 191, 0.1), rgba(95, 189, 191, 0.22), rgba(95, 189, 191, 0.1));
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
   border-radius: 10px;
@@ -155,7 +163,7 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 63, 67, 0.18);
   border-radius: 8px;
 }
 ::-webkit-scrollbar-track {
@@ -163,7 +171,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-accent-strong);
   outline-offset: 2px;
 }
 

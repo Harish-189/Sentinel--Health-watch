@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { EvidenceDrawer, Onboarding } from "./components/Overlays";
 import { Footer, Sidebar, TopBar } from "./components/Shell";
+import { LoadingBlock } from "./components/ui";
 import { useAnalysis, useCaseFile } from "./lib/api";
 import { useEvidence } from "./lib/evidence";
 import { useApp, type Page } from "./lib/state";
@@ -40,7 +41,7 @@ function EvidenceSync() {
 }
 
 export default function App() {
-  const { page } = useApp();
+  const { page, ready } = useApp();
   const [help, setHelp] = useState(() => !localStorage.getItem(ONBOARD_KEY) && !window.location.search.includes("skipOnboarding"));
   const Body = { command: CommandCenter, signals: SignalExplorer, investigation: Investigation, capacity: Capacity, actions: ActionQueue, evaluation: Evaluation, lab: ScenarioLab }[page];
 
@@ -54,7 +55,13 @@ export default function App() {
           <TopBar title={TITLES[page]} onHelp={() => setHelp(true)} />
           <AnimatePresence mode="wait">
             <motion.main key={page} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }} className="min-w-0 flex-1">
-              <Body />
+              {ready ? (
+                <Body />
+              ) : (
+                <div className="glass p-6">
+                  <LoadingBlock label="Connecting to the Sentinel API" rows={6} />
+                </div>
+              )}
             </motion.main>
           </AnimatePresence>
           <Footer />

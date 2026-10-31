@@ -22,7 +22,7 @@ export default function Investigation() {
         <div className="min-w-[200px]">
           <div className="label-caps">Case file</div>
           <div className="mt-0.5 flex items-center gap-2">
-            <select value={district} onChange={(e) => setDistrict(e.target.value)} className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-lg font-semibold text-ink outline-none focus:border-accent/60" aria-label="District">
+            <select value={district} onChange={(e) => setDistrict(e.target.value)} className="rounded-lg border border-line/30 bg-white/85 px-2 py-1 text-lg font-semibold text-ink outline-none focus:border-accent/60" aria-label="District">
               {(districts.data ?? []).map((d) => (
                 <option key={d.code} value={d.code} className="bg-surface">
                   {d.name}
@@ -39,7 +39,7 @@ export default function Investigation() {
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {cf && <VerifierBadge cf={cf} />}
           {cf && <ModeBadge cf={cf} />}
-          <button onClick={s.run} disabled={s.running} className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-ink-2 hover:border-accent/50 hover:text-accent disabled:opacity-50">
+          <button onClick={s.run} disabled={s.running} className="inline-flex items-center gap-1.5 rounded-lg border border-line/30 px-3 py-2 text-xs text-ink-2 hover:border-accent/50 hover:text-accent-ink disabled:opacity-50">
             <RefreshCw size={13} className={s.running ? "animate-spin" : ""} /> Re-run agents
           </button>
         </div>
@@ -98,7 +98,7 @@ function Gauge({ a }: { a: Assessment }) {
   return (
     <div className="flex items-center gap-3" title="Calibrated confidence with bootstrap P10–P90 interval">
       <svg width={88} height={50} viewBox="0 0 88 50" aria-hidden>
-        <path d={arc(0, 1)} stroke="rgba(255,255,255,0.08)" strokeWidth={7} fill="none" strokeLinecap="round" />
+        <path d={arc(0, 1)} stroke="rgba(23,54,58,0.1)" strokeWidth={7} fill="none" strokeLinecap="round" />
         <path d={arc(low, Math.max(high, low + 0.01))} stroke={`${c}55`} strokeWidth={7} fill="none" />
         <motion.path d={arc(0, Math.max(point, 0.01))} stroke={c} strokeWidth={3} fill="none" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.9, ease: mo.ease }} />
       </svg>
@@ -133,7 +133,7 @@ function ModeBadge({ cf }: { cf: CaseFile }) {
   const u = cf.usage;
   if (u.mode === "online")
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-lg border border-accent/30 px-2.5 py-1.5 text-xs text-accent" title={`${u.model} · ${u.input_tokens + u.output_tokens} tokens · cache hits ${u.cache_hits}`}>
+      <span className="inline-flex items-center gap-1.5 rounded-lg border border-accent/30 px-2.5 py-1.5 text-xs text-accent-ink" title={`${u.model} · ${u.input_tokens + u.output_tokens} tokens · cache hits ${u.cache_hits}`}>
         <Cpu size={13} /> LLM · <span className="num">{u.calls} calls · ${u.cost_usd.toFixed(3)}</span>
       </span>
     );
@@ -160,7 +160,7 @@ function Stepper({ steps, running }: { steps: Record<string, StepEvent>; running
                   {st === "running" ? <Loader2 size={14} className="animate-spin" /> : st === "blocked" ? <AlertOctagon size={14} /> : done ? <Check size={14} /> : running ? <CircleDashed size={14} /> : <span className="num text-[10px]">{i + 1}</span>}
                 </span>
                 <span className={`text-[12.5px] font-medium ${done || st === "running" ? "text-ink" : "text-ink-3"}`}>{name}</span>
-                {i < STEPS.length - 1 && <span className="hidden h-px flex-1 lg:block" style={{ background: done ? `${tone}66` : "rgba(255,255,255,0.08)" }} />}
+                {i < STEPS.length - 1 && <span className="hidden h-px flex-1 lg:block" style={{ background: done ? `${tone}66` : "rgba(23,54,58,0.1)" }} />}
               </div>
               <AnimatePresence>
                 {ev && ev.status !== "running" && (
@@ -204,15 +204,15 @@ function Hypotheses({ cf }: { cf: CaseFile }) {
 
 function HypothesisCard({ h, i }: { h: Hypothesis; i: number }) {
   const epi = h.kind === "epidemic";
-  const c = epi ? tierTok.E3.color : "#94a3b8";
+  const c = epi ? tierTok.E3.color : "#6F8F8A";
   return (
-    <motion.article initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * mo.stagger, ease: mo.ease }} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5" style={{ borderLeft: `3px solid ${c}` }}>
+    <motion.article initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * mo.stagger, ease: mo.ease }} className="rounded-xl border border-line/30 bg-white/50 p-3.5" style={{ borderLeft: `3px solid ${c}` }}>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="num text-[11px] text-ink-3">#{i + 1}</span>
             <h3 className="text-[14px] font-semibold text-ink">{h.title}</h3>
-            <Badge color={epi ? tierTok.E3.color : "#94a3b8"}>{epi ? "EPIDEMIC" : "NON-EPIDEMIC"}</Badge>
+            <Badge color={epi ? tierTok.E3.ink : "#4A6B65"}>{epi ? "EPIDEMIC" : "NON-EPIDEMIC"}</Badge>
           </div>
           <p className="mt-1 text-[12.5px] leading-relaxed text-ink-2">{h.summary}</p>
         </div>
@@ -220,13 +220,13 @@ function HypothesisCard({ h, i }: { h: Hypothesis; i: number }) {
           <div className="text-xl font-semibold text-ink">
             <CountUp value={h.probability * 100} digits={h.probability < 0.1 ? 1 : 0} suffix="%" />
           </div>
-          <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/[0.06]">
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-ink/10">
             <motion.div className="h-full rounded-full" style={{ background: c }} initial={{ width: 0 }} animate={{ width: pct(h.probability) }} transition={{ duration: 0.8, ease: mo.ease }} />
           </div>
         </div>
       </div>
       {h.claims.length > 0 && (
-        <ul className="mt-2.5 flex flex-col gap-1.5 border-t border-white/[0.05] pt-2.5">
+        <ul className="mt-2.5 flex flex-col gap-1.5 border-t border-line/30 pt-2.5">
           {h.claims.map((c) => (
             <li key={c.claim_id} className="flex gap-2 text-[12px] leading-relaxed text-ink-2">
               <CheckCircle2 size={13} className="mt-[3px] shrink-0 text-good" aria-label="grounded" />
@@ -252,7 +252,7 @@ function WhyPanel({ cf }: { cf: CaseFile }) {
   const byTier = TIERS.slice(1).map((t) => ({ t, rows: g.criteria.filter((c) => c.tier === t) }));
   return (
     <Panel title={isE3 ? "Why E3?" : "Why not E3?"} subtitle="Deterministic evidence gate: the LLM never sets the tier" delay={0.08} bodyClass="p-3">
-      <p className="mb-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5 text-[12px] leading-relaxed text-ink-2">{cf.tier_explanation}</p>
+      <p className="mb-3 rounded-lg border border-line/30 bg-white/50 p-2.5 text-[12px] leading-relaxed text-ink-2">{cf.tier_explanation}</p>
       <div className="flex flex-col gap-3">
         {byTier.map(({ t, rows }) => (
           <div key={t}>
@@ -262,7 +262,7 @@ function WhyPanel({ cf }: { cf: CaseFile }) {
             </div>
             <ul className="flex flex-col gap-1">
               {rows.map((c) => (
-                <li key={c.criterion_id} className="grid grid-cols-[18px_1fr_auto] items-start gap-2 rounded-lg px-1.5 py-1 text-[12px] hover:bg-white/[0.03]">
+                <li key={c.criterion_id} className="grid grid-cols-[18px_1fr_auto] items-start gap-2 rounded-lg px-1.5 py-1 text-[12px] hover:bg-white/50">
                   {c.met ? <Check size={14} className="mt-[2px] text-good" /> : <X size={14} className="mt-[2px] text-e3" />}
                   <div className="min-w-0">
                     <div className={c.met ? "text-ink-2" : "text-ink"}>{c.label}</div>
@@ -302,7 +302,7 @@ function Checklist({ a }: { a: Assessment }) {
           {a.confounders.map((c) => {
             const st = confounderStatus[c.status];
             return (
-              <li key={c.confounder_id} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5">
+              <li key={c.confounder_id} className="rounded-lg border border-line/30 bg-white/50 p-2.5">
                 <div className="flex items-center gap-2">
                   <Badge color={st.color}>{st.label}</Badge>
                   <span className="flex-1 text-[12.5px] font-medium text-ink">{c.label || titleCase(c.name)}</span>
@@ -310,7 +310,7 @@ function Checklist({ a }: { a: Assessment }) {
                     explains {pct(c.explained_share)}
                   </span>
                 </div>
-                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.06]">
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-ink/10">
                   <div className="h-full rounded-full" style={{ width: pct(c.explained_share), background: st.color }} />
                 </div>
                 <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-3">{c.summary}</p>
@@ -336,7 +336,7 @@ function Recommendations({ cf, onQueue }: { cf: CaseFile; onQueue: () => void })
       title="Recommended actions"
       subtitle={`From the approved catalog, gated by tier ${cf.assessment.gate.tier}. Proposals only: a human approves each one.`}
       right={
-        <button onClick={onQueue} className="inline-flex items-center gap-1 rounded-lg border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent hover:bg-accent/20">
+        <button onClick={onQueue} className="inline-flex items-center gap-1 rounded-lg border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold text-accent-ink hover:bg-accent/20">
           Open Action Queue <ArrowRight size={13} />
         </button>
       }
@@ -349,7 +349,7 @@ function Recommendations({ cf, onQueue }: { cf: CaseFile; onQueue: () => void })
       ) : (
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-3">
           {cf.recommendations.map((r, i) => (
-            <motion.div key={r.action} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * mo.stagger }} className="flex flex-col rounded-xl border border-white/[0.07] bg-white/[0.02] p-3">
+            <motion.div key={r.action} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * mo.stagger }} className="flex flex-col rounded-xl border border-line/30 bg-white/50 p-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[13px] font-semibold text-ink">{r.title}</span>
                 <span className="num text-[10px] text-ink-3">min {r.min_tier}</span>
@@ -360,7 +360,7 @@ function Recommendations({ cf, onQueue }: { cf: CaseFile; onQueue: () => void })
                   <IdChip key={id} id={id} />
                 ))}
               </div>
-              <div className="mt-2 flex items-center justify-between border-t border-white/[0.05] pt-2 text-[11px]">
+              <div className="mt-2 flex items-center justify-between border-t border-line/30 pt-2 text-[11px]">
                 <span className="text-ink-3">{r.source === "llm" ? "LLM recommender" : "Rule recommender"}</span>
                 {r.pending_ref ? <span className="num text-e2">⏳ {r.pending_ref} · awaiting approval</span> : <span className="text-ink-3">not queued</span>}
               </div>

@@ -72,6 +72,6 @@ def test_api_refuses_individual_level_action_params() -> None:
 
     from app.main import app
 
-    r = TestClient(app).post("/api/actions", json={"action": "increase_monitoring", "district": "D3",
+    r = TestClient(app).post("/api/actions", json={"action": "increase_monitoring", "district": "ERD",
                                                    "params": {"patient_name": "x"}, "evidence_ids": []})
     assert r.status_code == 400

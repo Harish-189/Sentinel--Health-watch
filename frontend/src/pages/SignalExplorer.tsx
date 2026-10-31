@@ -34,7 +34,7 @@ export default function SignalExplorer() {
             const t = analysis.data?.assessments.find((x) => x.district === d.code)?.gate.tier ?? "E0";
             const on = d.code === district;
             return (
-              <button key={d.code} onClick={() => setDistrict(d.code)} className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${on ? "border-accent/60 bg-accent/10 text-ink" : "border-white/[0.08] text-ink-2 hover:border-white/20"}`}>
+              <button key={d.code} onClick={() => setDistrict(d.code)} className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${on ? "border-accent/60 bg-accent/10 text-ink" : "border-line/30 text-ink-2 hover:border-line/50"}`}>
                 {d.name}
                 <TierChip tier={t} size="sm" />
               </button>
@@ -75,24 +75,24 @@ function SourcePanel({ s, anomalies, delay }: { s: SeriesDetection; anomalies: A
         formatter: (ps: { dataIndex: number }[]) => {
           const i = ps[0]?.dataIndex ?? 0;
           const z = s.z[i];
-          return `<div style="font-family:${font.mono};font-size:11px"><b>${s.dates[i]}</b><br/>observed <b>${s.observed[i]?.toFixed(1) ?? "–"}</b><br/>expected ${s.expected[i].toFixed(1)} <span style="opacity:.6">[${s.lower[i].toFixed(1)}–${s.upper[i].toFixed(1)}]</span><br/>z <b style="color:${z !== null && z >= 3 ? "#EF4444" : "inherit"}">${z?.toFixed(2) ?? "–"}</b></div>`;
+          return `<div style="font-family:${font.mono};font-size:11px"><b>${s.dates[i]}</b><br/>observed <b>${s.observed[i]?.toFixed(1) ?? "–"}</b><br/>expected ${s.expected[i].toFixed(1)} <span style="opacity:.6">[${s.lower[i].toFixed(1)}–${s.upper[i].toFixed(1)}]</span><br/>z <b style="color:${z !== null && z >= 3 ? "#E5535D" : "inherit"}">${z?.toFixed(2) ?? "–"}</b></div>`;
         },
       },
       xAxis: { type: "category", data: x, boundaryGap: false, ...axis, axisLabel: { ...axis.axisLabel, interval: 14 }, splitLine: { show: false } },
       yAxis: { type: "value", scale: true, ...axis, axisLabel: { ...axis.axisLabel, formatter: (v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}k` : v < 1 && v > 0 ? v.toFixed(2) : String(Math.round(v))) } },
       series: [
         { name: "lower", type: "line", data: s.lower, stack: "band", symbol: "none", lineStyle: { opacity: 0 }, silent: true },
-        { name: "Baseline band", type: "line", data: s.upper.map((u, i) => u - s.lower[i]), stack: "band", symbol: "none", lineStyle: { opacity: 0 }, areaStyle: { color: "rgba(148,163,184,0.13)" }, silent: true },
-        { name: "Expected", type: "line", data: s.expected, symbol: "none", lineStyle: { color: "rgba(148,163,184,0.6)", width: 1, type: "dashed" }, silent: true },
+        { name: "Baseline band", type: "line", data: s.upper.map((u, i) => u - s.lower[i]), stack: "band", symbol: "none", lineStyle: { opacity: 0 }, areaStyle: { color: "rgba(23,54,58,0.08)" }, silent: true },
+        { name: "Expected", type: "line", data: s.expected, symbol: "none", lineStyle: { color: "rgba(23,54,58,0.45)", width: 1, type: "dashed" }, silent: true },
         {
           name: "Observed",
           type: "line",
           data: s.observed,
           symbol: "none",
           lineStyle: { color: c, width: 2 },
-          markArea: { silent: true, itemStyle: { color: "rgba(239,68,68,0.07)" }, data: anomalies.map((a) => [{ xAxis: shortDate(a.start_date) }, { xAxis: shortDate(a.end_date) }]) },
+          markArea: { silent: true, itemStyle: { color: "rgba(229,83,93,0.08)" }, data: anomalies.map((a) => [{ xAxis: shortDate(a.start_date) }, { xAxis: shortDate(a.end_date) }]) },
         },
-        { name: "Anomaly", type: "scatter", data: flagged, symbolSize: 8, itemStyle: { color: "#EF4444", borderColor: color.surface, borderWidth: 2 }, z: 5 },
+        { name: "Anomaly", type: "scatter", data: flagged, symbolSize: 8, itemStyle: { color: "#E5535D", borderColor: color.surface, borderWidth: 2 }, z: 5 },
       ],
     };
   }, [s, anomalies, c]);
@@ -148,7 +148,7 @@ function LeadLagPanel({ series, syndrome, signal }: { series: SeriesDetection[];
           endLabel: { show: true, formatter: "{a}", color: color.textSecondary, fontSize: 10.5, fontFamily: font.sans },
           emphasis: { focus: "series" },
         })),
-        { name: "threshold", type: "line", data: [], markLine: { silent: true, symbol: "none", lineStyle: { color: "rgba(239,68,68,0.5)", type: "dashed" }, label: { formatter: "z = 3", color: "#EF4444", fontSize: 10 }, data: [{ yAxis: 3 }] } },
+        { name: "threshold", type: "line", data: [], markLine: { silent: true, symbol: "none", lineStyle: { color: "rgba(229,83,93,0.5)", type: "dashed" }, label: { formatter: "z = 3", color: "#E5535D", fontSize: 10 }, data: [{ yAxis: 3 }] } },
       ],
     };
   }, [series, picks]);
@@ -172,7 +172,7 @@ function LeadLagPanel({ series, syndrome, signal }: { series: SeriesDetection[];
                 </li>
               ))}
             </ol>
-            <div className="mt-1 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5">
+            <div className="mt-1 rounded-lg border border-line/30 bg-white/50 p-2.5">
               <div className="label-caps">Lag consistency</div>
               <div className="num mt-1 text-xl font-semibold text-ink">{Math.round(signal!.lag_consistency * 100)}%</div>
               <div className="mt-1 flex flex-col gap-0.5">

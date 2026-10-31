@@ -4,7 +4,7 @@ from app.agents.orchestrator import run_analysis
 from app.analysis.forecast import forecast_capacity
 
 
-def _fc(scenario: str, district: str = "D3", intervention: bool = False):  # type: ignore[no-untyped-def]
+def _fc(scenario: str, district: str = "ERD", intervention: bool = False):  # type: ignore[no-untyped-def]
     bundle = run_analysis(scenario, seed=42)
     return forecast_capacity(bundle.context, district, intervention=intervention)
 

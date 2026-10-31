@@ -9,7 +9,7 @@ import { useApp } from "../lib/state";
 import type { Forecast } from "../lib/types";
 import { color, font, tier as tierTok } from "../theme";
 
-const BAND = "#22D3EE";
+const BAND = "#2E9EA3";
 
 export default function Capacity() {
   const { district, setDistrict } = useApp();
@@ -30,14 +30,14 @@ export default function Capacity() {
             const a = analysis.data?.assessments.find((x) => x.district === d.code);
             const pb = a ? Math.max(...a.forecast.breach_prob_beds) : 0;
             return (
-              <button key={d.code} onClick={() => setDistrict(d.code)} className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${d.code === district ? "border-accent/60 bg-accent/10 text-ink" : "border-white/[0.08] text-ink-2 hover:border-white/20"}`}>
+              <button key={d.code} onClick={() => setDistrict(d.code)} className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${d.code === district ? "border-accent/60 bg-accent/10 text-ink" : "border-line/30 text-ink-2 hover:border-line/50"}`}>
                 {d.name}
-                {pb >= 0.2 && <span className="num text-[10.5px]" style={{ color: pb >= 0.5 ? tierTok.E3.color : tierTok.E2.color }}>{pct(pb)}</span>}
+                {pb >= 0.2 && <span className="num text-[10.5px]" style={{ color: pb >= 0.5 ? tierTok.E3.ink : tierTok.E2.ink }}>{pct(pb)}</span>}
               </button>
             );
           })}
         </div>
-        <div className="ml-auto flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-1.5">
+        <div className="ml-auto flex items-center gap-3 rounded-lg border border-line/30 bg-white/50 px-3 py-1.5">
           <Toggle on={intervention} onChange={setIntervention} label="Apply intervention" />
           <span className="hidden text-[11px] text-ink-3 md:inline">(slows growth after a 2-day delay)</span>
         </div>
@@ -67,7 +67,7 @@ export default function Capacity() {
 function Callout({ f, base, withInt, intervention, tierOf }: { f: Forecast; base?: Forecast; withInt?: Forecast; intervention: boolean; tierOf?: keyof typeof tierTok }) {
   const pb = Math.max(...f.breach_prob_beds);
   const pi = Math.max(...f.breach_prob_icu);
-  const sev = pb >= 0.5 ? tierTok.E3.color : pb >= 0.2 ? tierTok.E2.color : color.good;
+  const sev = pb >= 0.5 ? tierTok.E3.ink : pb >= 0.2 ? tierTok.E2.ink : color.good;
   const peak = Math.max(...f.beds.p50);
   const delta = base && withInt ? Math.max(...base.breach_prob_beds) - Math.max(...withInt.breach_prob_beds) : null;
   const dayLabel = (d: number | null) => (d === null ? "not within 14 days" : shortDate(f.dates[f.days.indexOf(d)] ?? f.dates[0]));
@@ -97,7 +97,7 @@ function Callout({ f, base, withInt, intervention, tierOf }: { f: Forecast; base
           </div>
         </div>
       </div>
-      <Mini label="ICU breach probability" value={<CountUp value={pi * 100} suffix="%" />} hint={`capacity ${f.icu_total.toFixed(0)} · ${dayLabel(f.breach_day_icu)}`} accent={pi >= 0.5 ? tierTok.E3.color : undefined} />
+      <Mini label="ICU breach probability" value={<CountUp value={pi * 100} suffix="%" />} hint={`capacity ${f.icu_total.toFixed(0)} · ${dayLabel(f.breach_day_icu)}`} accent={pi >= 0.5 ? tierTok.E3.ink : undefined} />
       <Mini label="Peak occupied beds (P50)" value={<CountUp value={peak} />} hint={`P90 ${Math.max(...f.beds.p90).toFixed(0)} · of ${f.beds_total.toFixed(0)}`} />
       <Mini
         label={intervention ? "Intervention effect" : "Growth rate"}
@@ -111,7 +111,7 @@ function Callout({ f, base, withInt, intervention, tierOf }: { f: Forecast; base
 
 function Mini({ label, value, hint, accent }: { label: string; value: React.ReactNode; hint: string; accent?: string }) {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+    <div className="rounded-xl border border-line/30 bg-white/50 p-3">
       <div className="label-caps">{label}</div>
       <div className="mt-1.5 text-2xl font-semibold leading-none" style={{ color: accent ?? color.text }}>
         {value}
@@ -143,7 +143,7 @@ function FanPanel({ f, kind }: { f: Forecast; kind: "beds" | "icu" }) {
           const i = ps[0]?.dataIndex ?? 0;
           const j = i - hDates.length;
           if (j < 0) return `<div style="font-family:${font.mono};font-size:11px"><b>${xs[i]}</b><br/>observed ${hist[i]?.toFixed(0) ?? "–"} / ${cap.toFixed(0)}</div>`;
-          return `<div style="font-family:${font.mono};font-size:11px"><b>${xs[i]}</b> · forecast<br/>P50 <b>${band.p50[j].toFixed(0)}</b><br/>P10–P90 ${band.p10[j].toFixed(0)}–${band.p90[j].toFixed(0)}<br/>capacity ${cap.toFixed(0)}<br/>P(breach) <b style="color:${prob[j] >= 0.5 ? "#EF4444" : "inherit"}">${(prob[j] * 100).toFixed(0)}%</b></div>`;
+          return `<div style="font-family:${font.mono};font-size:11px"><b>${xs[i]}</b> · forecast<br/>P50 <b>${band.p50[j].toFixed(0)}</b><br/>P10–P90 ${band.p10[j].toFixed(0)}–${band.p90[j].toFixed(0)}<br/>capacity ${cap.toFixed(0)}<br/>P(breach) <b style="color:${prob[j] >= 0.5 ? "#E5535D" : "inherit"}">${(prob[j] * 100).toFixed(0)}%</b></div>`;
         },
       },
       xAxis: { type: "category", data: xs, boundaryGap: false, ...axis, axisLabel: { ...axis.axisLabel, interval: 6 }, splitLine: { show: false } },
@@ -162,9 +162,9 @@ function FanPanel({ f, kind }: { f: Forecast; kind: "beds" | "icu" }) {
             silent: true,
             symbol: "none",
             data: [
-              { yAxis: cap, lineStyle: { color: "#EF4444", width: 1.5 }, label: { formatter: `capacity ${cap.toFixed(0)}`, color: "#EF4444", fontSize: 10, position: "insideEndTop" } },
-              { xAxis: xs[hDates.length], lineStyle: { color: "rgba(255,255,255,0.25)", type: "dotted" }, label: { formatter: "now", color: color.textMuted, fontSize: 10, position: "start" } },
-              ...(breachDay !== null ? [{ xAxis: xs[hDates.length + f.days.indexOf(breachDay)], lineStyle: { color: "rgba(239,68,68,0.6)", type: "dashed" as const }, label: { formatter: "P≥50%", color: "#EF4444", fontSize: 10 } }] : []),
+              { yAxis: cap, lineStyle: { color: "#E5535D", width: 1.5 }, label: { formatter: `capacity ${cap.toFixed(0)}`, color: "#E5535D", fontSize: 10, position: "insideEndTop" } },
+              { xAxis: xs[hDates.length], lineStyle: { color: "rgba(23,54,58,0.35)", type: "dotted" }, label: { formatter: "now", color: color.textMuted, fontSize: 10, position: "start" } },
+              ...(breachDay !== null ? [{ xAxis: xs[hDates.length + f.days.indexOf(breachDay)], lineStyle: { color: "rgba(229,83,93,0.6)", type: "dashed" as const }, label: { formatter: "P≥50%", color: "#E5535D", fontSize: 10 } }] : []),
             ],
           },
         },
@@ -177,17 +177,17 @@ function FanPanel({ f, kind }: { f: Forecast; kind: "beds" | "icu" }) {
     <Panel
       title={
         <span className="flex items-center gap-2">
-          <Icon size={15} className="text-accent" /> {kind === "beds" ? "Occupied beds" : "ICU occupancy"}
+          <Icon size={15} className="text-accent-ink" /> {kind === "beds" ? "Occupied beds" : "ICU occupancy"}
         </span>
       }
-      subtitle="Observed (white) · median forecast (dashed) · P10–P90 band (shaded)"
+      subtitle="Observed (solid) · median forecast (dashed) · P10–P90 band (shaded)"
       right={<span className="num text-xs text-ink-3">max P(breach) {pct(Math.max(...prob))}</span>}
       bodyClass="px-2 pb-2 pt-1"
     >
       <EChart option={option} height={300} />
       <div className="flex h-8 items-end gap-[2px] pb-1 pr-[64px]" style={{ paddingLeft: `calc(46px + (100% - 110px) * ${f.history_days.length / (f.history_days.length + f.days.length - 1)})` }} aria-label="Daily breach probability">
         {prob.map((p, i) => (
-          <div key={i} className="flex-1 rounded-t-[2px]" title={`${shortDate(f.dates[i])}: P(breach) ${pct(p)}`} style={{ height: `${Math.max(4, p * 100)}%`, background: p >= 0.5 ? "#EF4444" : p >= 0.2 ? "#F59E0B" : "rgba(255,255,255,0.12)" }} />
+          <div key={i} className="flex-1 rounded-t-[2px]" title={`${shortDate(f.dates[i])}: P(breach) ${pct(p)}`} style={{ height: `${Math.max(4, p * 100)}%`, background: p >= 0.5 ? "#E5535D" : p >= 0.2 ? "#F2A65A" : "rgba(23,54,58,0.1)" }} />
         ))}
       </div>
       <div className="pr-[64px] text-right text-[10px] text-ink-3">Daily P(breach) over the forecast window</div>
