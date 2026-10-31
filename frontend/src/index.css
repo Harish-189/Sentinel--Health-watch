@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #070b14;
+  --color-surface: #0c1322;
+  --color-ink: #e6edf7;
+  --color-ink-2: #9aa8bd;
+  --color-ink-3: #64748b;
+  --color-accent: #22d3ee;
+  --color-e0: #64748b;
+  --color-e1: #3b82f6;
+  --color-e2: #f59e0b;
+  --color-e3: #ef4444;
+  --color-good: #10b981;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Background: radial glows + fine grid + noise. Fixed, behind everything. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(34, 211, 238, 0.09), transparent 60%),
+    radial-gradient(900px 600px at 100% 0%, rgba(59, 130, 246, 0.08), transparent 60%),
+    radial-gradient(800px 500px at 60% 110%, rgba(239, 68, 68, 0.05), transparent 60%);
+}
+.backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at 50% 30%, black 30%, transparent 85%);
+}
+.backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.glass {
+  background: rgba(14, 21, 37, 0.62);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 20px 40px -24px rgba(0, 0, 0, 0.6);
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.label-caps {
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+  font-weight: 600;
+}
+
+/* Pulsing glow for E2/E3 */
+@keyframes tier-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--glow, rgba(239, 68, 68, 0.5));
+  }
+  50% {
+    box-shadow: 0 0 18px 2px var(--glow, rgba(239, 68, 68, 0.5));
+  }
+}
+.pulse-glow {
+  animation: tier-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes ring-out {
+  0% {
+    transform: scale(1.5);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+.ring-out {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ring-out 2.4s ease-out infinite;
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-10%);
+  }
+  100% {
+    transform: translateY(110%);
+  }
+}
+.scanline {
+  animation: scan 5s linear infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+.blink {
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+.shimmer {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 10px;
+}
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .scanline,
+  .ring-out {
+    display: none;
+  }
+}

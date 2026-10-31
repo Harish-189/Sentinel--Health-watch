@@ -5,6 +5,8 @@ simulation:
   start_date: "2023-11-01"
   onset_day: 700          # scenario events start here; "now" = last day (729)
   seed: 42
+  demo_seed: 7            # default seed for the UI/API demo (clear E1->E3 build-up and a projected bed breach)
+  timeline_start: 694     # first as_of frame of the Command Center replay
   default_primary: D3     # Amberfield (center tile, 6 neighbors)
 
 privacy:

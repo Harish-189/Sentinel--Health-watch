@@ -17,6 +17,8 @@ class SimulationCfg(BaseModel):
     start_date: str
     onset_day: int
     seed: int
+    demo_seed: int
+    timeline_start: int
     default_primary: str
 
 
