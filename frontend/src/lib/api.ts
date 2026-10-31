@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type {
+  EvalReport,
+  EvalStatus,
   AnalysisBundle,
   AuditEntry,
   CaseFile,
@@ -123,3 +125,23 @@ export const useAudit = () =>
 export function streamUrl(params: { scenario?: string; seed?: number; district?: string }): string {
   return `/api/analyze/stream${qs({ ...params, pace_ms: 380 })}`;
 }
+
+// ---------------------------------------------------------------- Stage 5
+
+/** null when no report has been generated yet (404). */
+export const useEvalReport = () =>
+  useQuery({
+    queryKey: ["eval-report"],
+    queryFn: async () => {
+      try {
+        return await api<EvalReport>("/api/eval/report");
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return null;
+        throw e;
+      }
+    },
+    staleTime: Infinity,
+  });
+
+export const useEvalStatus = (poll: boolean) =>
+  useQuery({ queryKey: ["eval-status"], queryFn: () => api<EvalStatus>("/api/eval/status"), refetchInterval: poll ? 1000 : false });

@@ -331,3 +331,67 @@ export interface SystemStatus {
   demo_seed: number;
   default_district: string;
 }
+
+// ---------------------------------------------------------------- Stage 5: Scenario Lab + Evaluation
+
+export interface DistrictDelta {
+  district: string;
+  name: string;
+  before: Tier;
+  after: Tier;
+  conf_before: number;
+  conf_after: number;
+  move: number;
+}
+
+export interface EvidenceDelta {
+  injected: string;
+  injected_label: string;
+  expected: string;
+  base: string[];
+  applied: string[];
+  seed: number;
+  focus: string;
+  focus_name: string;
+  districts: DistrictDelta[];
+  signals: { district: string; name: string; change: string; before_sources: string[]; after_sources: string[]; signal_id: string | null }[];
+  hypotheses: { category: string; title: string; kind: string; before: number; after: number }[];
+  explanation: string[];
+  latency_ms: number;
+}
+
+export interface EvalReport {
+  generated_at: string;
+  runs: number;
+  elapsed_s: number;
+  window_days: number;
+  llm_mode: string;
+  baseline: { rule: string };
+  detection: {
+    outbreak_runs: number;
+    sensitivity_e2: number | null;
+    sensitivity_e3: number | null;
+    sensitivity_baseline: number | null;
+    lead_time_days_median: number | null;
+    lead_time_days_mean: number | null;
+    detect_delay_days_median: number | null;
+    baseline_delay_days_median: number | null;
+    e3_delay_days_median: number | null;
+  };
+  false_alarms: { sentinel_e2_per_90d: number; sentinel_e1_per_90d: number; baseline_per_90d: number; note: string };
+  intervention: { e3_events: number; e3_true: number; e3_false: number; e3_precision: number | null; false_intervention_rate: number; baseline_precision: number | null; baseline_false_rate: number | null };
+  calibration: { brier: number; brier_baseline: number; pairs: number; bins: { lo: number; hi: number; n: number; predicted: number; observed: number }[] };
+  agents: { claims: number; grounded: number; groundedness: number | null; hallucination_rate: number | null; tokens_per_analysis: number; cost_per_analysis_usd: number };
+  forecast: { target: string; made_on_day: number; p10_p90_coverage: number | null; mape_p50: number | null };
+  latency: { mean_ms: number | null; p95_ms: number | null };
+  fairness: { district: string; name: string; runs: number; low_reporting: boolean; sensitivity_e2: number | null; sensitivity_e3: number | null; sensitivity_baseline: number | null; detect_delay_days: number | null }[];
+  outcomes: Record<string, { runs: number; E0: number; E1: number; E2: number; E3: number; baseline_alarm: number }>;
+  adaptation: { scenario: string; seconds: number; max_tier_after: Tier; correct: boolean }[];
+}
+
+export interface EvalStatus {
+  running: boolean;
+  done: number;
+  total: number;
+  error: string | null;
+}

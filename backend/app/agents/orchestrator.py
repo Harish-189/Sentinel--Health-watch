@@ -29,7 +29,8 @@ from app.analysis.models import (
 from app.config import get_settings
 from app.data.districts import CODES, by_code
 from app.data.privacy import apply_privacy
-from app.data.scenarios import simulate
+from app.data.scenarios import SimResult, simulate
+from app.data.uploads import apply_uploads, is_upload
 from app.detection.models import series_id
 from app.detection.run import detect_all, to_matrix
 
@@ -45,8 +46,14 @@ class ConfounderSet:
 
 
 def detect_step(scenario: tuple[str, ...], seed: int, as_of: int | None) -> AnalysisContext:
-    sim = simulate(list(scenario), seed=seed)
-    df = apply_privacy(sim.df)  # Ingest + Validate (PII guard, k-suppression)
+    overlays = [n for n in scenario if not is_upload(n)]
+    sim = simulate(overlays, seed=seed)
+    return context_from_sim(sim, scenario, seed, as_of, uploads=[n for n in scenario if is_upload(n)])
+
+
+def context_from_sim(sim: SimResult, scenario: tuple[str, ...], seed: int, as_of: int | None,
+                     uploads: list[str] | None = None) -> AnalysisContext:
+    df = apply_privacy(apply_uploads(sim.df, uploads or []))  # Ingest + Validate (PII guard, k-suppression)
     report = detect_all(df, holidays=sim.holidays, as_of=as_of)
     mats, dates = to_matrix(df)
     return AnalysisContext(scenario=scenario, seed=seed, as_of=report.as_of, df=df, mats=mats, dates=dates,
@@ -171,6 +178,15 @@ def run_analysis(scenario: str | tuple[str, ...] = "true_outbreak", seed: int | 
     names = (scenario,) if isinstance(scenario, str) else tuple(scenario)
     seed = get_settings().simulation.seed if seed is None else seed
     ctx = detect_step(names, seed, as_of)
+    signals = correlate_step(ctx)
+    cfs = confounder_step(ctx, signals)
+    grades = grade_step(ctx, signals, cfs)
+    return assemble(ctx, signals, cfs, grades, forecast_step(ctx))
+
+
+def analyze_sim(sim: SimResult, as_of: int | None = None) -> AnalysisBundle:
+    """Full deterministic run on an already-simulated world (eval harness: random primary district)."""
+    ctx = context_from_sim(sim, tuple(sim.truth.scenarios), sim.truth.seed, as_of)
     signals = correlate_step(ctx)
     cfs = confounder_step(ctx, signals)
     grades = grade_step(ctx, signals, cfs)

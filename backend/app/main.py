@@ -12,8 +12,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.agents.lab import EvidenceDelta, evidence_delta
 from app.agents.llm import LLMSession, models, resolve_mode
-from app.agents.orchestrator import run_analysis
+from app.agents.orchestrator import detect_step, run_analysis
+from app.agents.pipeline import clear_cache as clear_casefiles
 from app.agents.pipeline import run_pipeline, run_to_casefile
 from app.agents.schemas import CaseFile
 from app.agents.timeline import Timeline, build_timeline
@@ -22,10 +24,13 @@ from app.analysis.forecast import forecast_capacity
 from app.analysis.models import AnalysisBundle, Forecast
 from app.config import get_settings
 from app.data.districts import DISTRICTS, neighbors
-from app.data.privacy import apply_privacy
+from app.data.privacy import PIIViolation
 from app.data.scenarios import CORE_SCENARIOS, OVERLAYS, simulate
+from app.data.uploads import PREFIX, UploadError, parse_upload, register
+from app.data.uploads import known as known_upload
 from app.detection.models import Anomaly, SeriesDetection
-from app.detection.run import DetectionReport, detect_all
+from app.detection.run import DetectionReport
+from app.eval import harness
 from app.governance.approvals import Governance, GovernanceError, KillSwitchEngaged, PendingAction
 from app.governance.audit import AuditEntry
 from app.governance.store import default_gov_engine
@@ -43,6 +48,8 @@ def _warm() -> None:
     _detection(scenario, DEMO_SEED, None)
     run_to_casefile(scenario, DEMO_SEED)
     build_timeline(scenario, DEMO_SEED)
+    if harness.load_report() is None:  # precompute the evaluation report once (cached on disk afterwards)
+        _start_eval(100)
 
 
 @asynccontextmanager
@@ -56,15 +63,14 @@ app = FastAPI(title="Sentinel", version="0.3.0", lifespan=lifespan)
 
 def _scenario(name: str) -> tuple[str, ...]:
     parts = tuple(p for p in name.split("+") if p)
-    if not parts or any(p not in OVERLAYS for p in parts):
+    if not parts or any(p not in OVERLAYS and not known_upload(p) for p in parts):
         raise HTTPException(404, f"unknown scenario: {name}")
     return parts
 
 
 @lru_cache(maxsize=16)
 def _detection(scenario: tuple[str, ...], seed: int, as_of: int | None) -> DetectionReport:
-    sim = simulate(list(scenario), seed=seed)
-    return detect_all(apply_privacy(sim.df), holidays=sim.holidays, as_of=as_of)
+    return detect_step(scenario, seed, as_of).report
 
 
 # ------------------------------------------------------------------ read APIs
@@ -255,3 +261,117 @@ def set_kill_switch(body: KillBody) -> dict[str, bool]:
         raise HTTPException(400, "a reason is required")
     GOV.set_kill_switch(body.engaged, body.actor, body.reason)
     return {"engaged": GOV.kill_switch_engaged()}
+
+
+# ------------------------------------------------------------------ scenario lab
+
+
+class InjectBody(BaseModel):
+    inject: str
+    base: str = DEMO_SCENARIO
+    seed: int = DEMO_SEED
+    district: str | None = None
+
+
+@app.post("/api/scenario/inject")
+def scenario_inject(body: InjectBody) -> EvidenceDelta:
+    base = _scenario(body.base)
+    if body.inject not in OVERLAYS and not known_upload(body.inject):
+        raise HTTPException(404, f"unknown scenario: {body.inject}")
+    if body.inject in base:
+        raise HTTPException(400, f"{body.inject} is already part of the base scenario")
+    return evidence_delta(base, body.inject, body.seed, body.district)
+
+
+class UploadBody(BaseModel):
+    csv: str = Field(max_length=2_000_000)
+    base: str = DEMO_SCENARIO
+    seed: int = DEMO_SEED
+
+
+@app.post("/api/data/upload")
+def data_upload(body: UploadBody) -> dict[str, Any]:
+    base = _scenario(body.base)
+    try:
+        df = parse_upload(body.csv)
+    except PIIViolation as e:  # privacy-by-design: person-level fields never get in
+        raise HTTPException(422, str(e)) from e
+    except UploadError as e:
+        raise HTTPException(400, str(e)) from e
+    token = PREFIX + register(df)
+    return {"upload": token, "rows": len(df), "delta": evidence_delta(base, token, body.seed)}
+
+
+@app.get("/api/data/sample")
+def data_sample(seed: int = DEMO_SEED) -> dict[str, str]:
+    """An example upload: a gastrointestinal bump in Tiruchirappalli over the last 2 weeks (aggregates only)."""
+    df = simulate(list(_scenario(DEMO_SCENARIO)), seed=seed).df
+    rows = ["day,district,source,metric,value"]
+    for (src, metric), factor in {("clinic", "gastrointestinal"): 2.4, ("pharmacy", "ors_rehydration"): 2.2,
+                                  ("absenteeism", "school_rate"): 1.6}.items():
+        sel = df[(df.district == "TRY") & (df.source == src) & (df.metric == metric) & (df.day >= 714)]
+        for _, r in sel.iterrows():
+            ramp = min(1.0, (r.day - 713) / 5)
+            val = r.value * (1 + (factor - 1) * ramp)
+            rows.append(f"{r.day},TRY,{src},{metric},{round(val, 2) if metric.endswith('rate') else round(val)}")
+    return {"filename": "tiruchirappalli_gi_cluster.csv", "csv": "\n".join(rows) + "\n"}
+
+
+# ------------------------------------------------------------------ evaluation
+
+_EVAL: dict[str, Any] = {"running": False, "done": 0, "total": 0, "error": None}
+
+
+@app.get("/api/eval/report")
+def eval_report() -> dict[str, Any]:
+    rep = harness.load_report()
+    if rep is None:
+        raise HTTPException(404, "no evaluation report yet: run the harness")
+    return rep
+
+
+@app.get("/api/eval/status")
+def eval_status() -> dict[str, Any]:
+    return dict(_EVAL)
+
+
+class EvalBody(BaseModel):
+    runs: int = Field(default=100, ge=8, le=400)
+
+
+@app.post("/api/eval/run")
+def eval_run(body: EvalBody) -> dict[str, Any]:
+    if _EVAL["running"]:
+        raise HTTPException(409, "an evaluation is already running")
+    _start_eval(body.runs)
+    return dict(_EVAL)
+
+
+def _start_eval(runs: int) -> None:
+    _EVAL.update(running=True, done=0, total=runs, error=None)
+
+    def work() -> None:
+        try:
+            harness.evaluate(runs, progress=lambda k, n: _EVAL.update(done=k, total=n))
+        except Exception as e:  # surface failures to the UI instead of dying silently
+            _EVAL["error"] = f"{type(e).__name__}: {e}"
+        finally:
+            _EVAL["running"] = False
+
+    threading.Thread(target=work, daemon=True).start()
+
+
+# ------------------------------------------------------------------ demo reset
+
+
+class ResetBody(BaseModel):
+    actor: str = "officer"
+
+
+@app.post("/api/demo-reset")
+def demo_reset(body: ResetBody) -> dict[str, Any]:
+    """Back to a clean demo: clears queued actions, releases the kill switch, drops cached case files.
+    The audit log is append-only and keeps a record of the reset."""
+    GOV.reset(body.actor)
+    clear_casefiles()
+    return {"ok": True, "scenario": DEMO_SCENARIO, "seed": DEMO_SEED}

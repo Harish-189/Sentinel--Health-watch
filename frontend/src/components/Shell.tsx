@@ -13,6 +13,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Radar,
+  RotateCcw,
   ScanSearch,
   ShieldCheck,
   WifiOff,
@@ -216,6 +217,7 @@ export function TopBar({ onHelp }: { onHelp: () => void }) {
       </div>
 
       <Clock />
+      <DemoReset />
       <button onClick={onHelp} className="grid h-9 w-9 place-items-center rounded-lg border border-line/30 text-ink-3 hover:border-accent/50 hover:text-accent-ink" title="How to read this screen" aria-label="Help">
         <CircleHelp size={17} />
       </button>
@@ -352,5 +354,32 @@ export function Footer() {
       </span>
       <span className="num">Synthetic data · simulated catchments · seeded</span>
     </footer>
+  );
+}
+
+function DemoReset() {
+  const qc = useQueryClient();
+  const { setScenario, go } = useApp();
+  const [armed, setArmed] = useState(false);
+  const m = useMutation({
+    mutationFn: () => post("/api/demo-reset", { actor: "duty_officer" }),
+    onSuccess: () => {
+      setScenario(null);
+      setArmed(false);
+      qc.invalidateQueries();
+      go("command");
+    },
+  });
+  return (
+    <button
+      onClick={() => (armed ? m.mutate() : setArmed(true))}
+      onBlur={() => setArmed(false)}
+      disabled={m.isPending}
+      className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-[11.5px] transition-colors ${armed ? "border-e2 bg-[#F2A65A]/20 text-e2" : "border-line/30 text-ink-3 hover:text-ink"}`}
+      title="Demo reset: clear queued actions, release the kill switch, return to the demo scenario (audit log is kept)"
+    >
+      <RotateCcw size={14} className={m.isPending ? "animate-spin" : ""} />
+      {armed ? "Confirm reset" : "Demo reset"}
+    </button>
   );
 }
