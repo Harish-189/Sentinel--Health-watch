@@ -216,6 +216,15 @@ def test_connection_error_falls_back_to_degraded(tmp_path: Path) -> None:
     assert case.recommendations  # rule-based recommender still works
 
 
+def test_unexpected_client_error_falls_back(tmp_path: Path) -> None:
+    """The SDK raises TypeError (not an API error) when no credentials resolve."""
+    session = LLMSession(client=FakeClient([TypeError("Could not resolve authentication method")]), mode="online",
+                         cache_dir=tmp_path)
+    case = run_to_casefile(("true_outbreak",), 42, session=session)
+    assert case.usage.mode == "degraded" and case.usage.degraded_reason == "no API credentials (set ANTHROPIC_API_KEY)"
+    assert case.hypotheses and case.recommendations
+
+
 def test_call_budget_is_enforced(tmp_path: Path) -> None:
     session = LLMSession(client=FakeClient(_online_responses()), mode="online", cache_dir=tmp_path)
     session.budget = 1

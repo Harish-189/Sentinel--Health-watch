@@ -135,6 +135,10 @@ class LLMSession:
             raise self._fail(f"API error {e.status_code}") from e
         except anthropic.APIConnectionError as e:
             raise self._fail("network unavailable") from e
+        except Exception as e:  # e.g. TypeError when no credentials resolve: never let the demo crash
+            if "authentication" in str(e).lower():
+                raise self._fail("no API credentials (set ANTHROPIC_API_KEY)") from e
+            raise self._fail(f"client error: {type(e).__name__}") from e
         self._record(msg, model)
         if getattr(msg, "stop_reason", None) == "refusal":
             raise self._fail("model declined the request")
